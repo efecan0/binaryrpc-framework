@@ -15,7 +15,9 @@ Although I sometimes got lost in the vast control that C++ offers, I progressed 
 
 In the future, I aim to evolve this architecture into an actor-mailbox model. However, I believe the current structure needs to be further solidified first. If you have any suggestions or contributions regarding this process, please feel free to contact me.
 
-> **BinaryRPC** is a zero‑copy, high‑throughput RPC framework built on top of **uWebSockets**.
+---
+
+> **BinaryRPC** is a high‑throughput RPC framework built on top of **uWebSockets**.
 
 > It is designed for latency-sensitive applications such as multiplayer games, financial tick streams, and IoT dashboards, delivering ultra-low latency and minimal overhead. With a modular architecture and efficient networking, BinaryRPC remains lightweight both in resource usage and developer experience.
 
