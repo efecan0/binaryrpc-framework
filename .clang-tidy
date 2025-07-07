@@ -1,0 +1,12 @@
+Checks: >
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  modernize-use-nullptr,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -readability-braces-around-statements
+
+WarningsAsErrors: clang-analyzer-*;bugprone-*
+HeaderFilterRegex: '^(?!.*vcpkg).*'   # 3rd-party dahil etme
+FormatStyle: file

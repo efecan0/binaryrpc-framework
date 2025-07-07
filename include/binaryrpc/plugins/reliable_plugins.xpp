@@ -1,0 +1,44 @@
+#pragma once
+
+#include "binaryrpc/core/interfaces/iplugin.hpp"
+#include "binaryrpc/core/interfaces/itransport.hpp"
+#include <thread>
+#include <atomic>
+#include <cstdint>
+
+namespace binaryrpc {
+
+    // QoS seviyeleri (ileri sürümlerde geniþletilebilir)
+    enum class QoSLevel {
+        AtMostOnce = 0,   // QoS 0
+        AtLeastOnce = 1   // QoS 1
+    };
+
+    class ReliablePlugin : public IPlugin {
+    public:
+        /**
+         * @param transport       - Altýndaki transport (örn. WebSocketTransport)
+         * @param level           - Hangi QoS seviyesini kullanacaðý (þu an yalnýzca AtLeastOnce destekli)
+         * @param retryIntervalMs - ACK gelmezse kaç ms sonra yeniden deneneceði
+         */
+        ReliablePlugin(ITransport* transport,
+            QoSLevel level = QoSLevel::AtLeastOnce,
+            uint32_t retryIntervalMs = 5000);
+        ~ReliablePlugin() override;
+
+        // IPlugin interface
+        void initialize() override;
+        const char* name() const override { return "ReliablePlugin"; }
+
+    private:
+        void startRetryLoop();
+        void stopRetryLoop();
+
+        ITransport* transport_;
+        QoSLevel      level_;
+        uint32_t      retryIntervalMs_;
+        std::atomic<bool> running_;
+        std::thread      retryThread_;
+    };
+
+} // namespace binaryrpc
