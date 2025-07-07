@@ -289,6 +289,7 @@ namespace binaryrpc {
      */
         class Impl;
         std::unique_ptr<Impl> pImpl_;
+        std::shared_ptr<IHandshakeInspector> getInspector();
         #ifdef BINARYRPC_TEST
             void handleFrame(const uint8_t* data, std::size_t length);
             std::function<void(const std::vector<uint8_t>&)> sendInterceptor_;

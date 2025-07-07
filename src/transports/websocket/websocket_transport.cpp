@@ -707,7 +707,7 @@ namespace binaryrpc {
                 wsBeh.upgrade = [this](auto* res, auto* req, auto* ctx)
                 {
                     /* 1) ———  Create identity with inspector  ——— */
-                    auto identity = pImpl_->inspector->extract(*req);
+                    auto identity = getInspector()->extract(*req);
                     if (!identity) {
                         LOG_ERROR("Handshake inspection failed: " + pImpl_->inspector->rejectReason());
                         res->writeStatus("400 Bad Request")->end(pImpl_->inspector->rejectReason());
@@ -1039,6 +1039,14 @@ namespace binaryrpc {
                 app.run();
                 });
         }
+    }
+
+    std::shared_ptr<IHandshakeInspector> WebSocketTransport::getInspector() {
+        if (!pImpl_->inspector) {
+            LOG_WARN("Inspector was null, fallbacking to DefaultInspector");
+            pImpl_->inspector = std::make_shared<DefaultInspector>();
+        }
+        return pImpl_->inspector;
     }
 
 
