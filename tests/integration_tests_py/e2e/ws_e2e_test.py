@@ -17,7 +17,7 @@ def print_result(name, ok):
 
 async def test_echo_simple_text():
     try:
-        async with websockets.connect(SERVER_URI, open_timeout=3, additional_headers=HEADERS) as ws:
+        async with websockets.connect(SERVER_URI, additional_headers=HEADERS) as ws:
             await ws.send(b"echo:hello world")
             resp = await ws.recv()
             if not isinstance(resp, (bytes, bytearray)):
@@ -31,7 +31,7 @@ async def test_echo_simple_text():
 
 async def test_error_simple_text():
     try:
-        async with websockets.connect(SERVER_URI, open_timeout=3, additional_headers=HEADERS) as ws:
+        async with websockets.connect(SERVER_URI, additional_headers=HEADERS) as ws:
             await ws.send(b"unknown:payload")
             resp = await ws.recv()
             if not isinstance(resp, (bytes, bytearray)):

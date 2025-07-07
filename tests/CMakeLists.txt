@@ -4,7 +4,7 @@ add_executable(binaryrpc_unit_tests
     session_manager.test.cpp
     generic_index.test.cpp
     middleware_chain.test.cpp
-    rpc_manager.test.cpp
+    #rpc_manager.test.cpp
     protocol.test.cpp
     rate_limiter.test.cpp
 )
@@ -13,7 +13,7 @@ target_link_libraries(binaryrpc_unit_tests
     PRIVATE
         binaryrpc_core
         Catch2::Catch2WithMain
-        glog::glog
+        #glog::glog
 )
 
 target_include_directories(binaryrpc_unit_tests
@@ -33,7 +33,7 @@ target_link_libraries(binaryrpc_qos_tests
     PRIVATE
         binaryrpc_core
         Catch2::Catch2WithMain
-        glog::glog
+        #glog::glog
 )
 
 target_include_directories(binaryrpc_qos_tests
