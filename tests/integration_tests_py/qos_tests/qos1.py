@@ -3,7 +3,7 @@ import asyncio, struct, time, inspect, websockets, os, json
 import logging
 from typing import List, Dict
 
-# Debug log ayarla
+# Set debug log
 #logging.basicConfig(level=logging.DEBUG)
 #logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class ws_connect:
             self.ws = await websockets.connect(self.uri, **connect_kwargs)
             #ogger.debug("Connection successful")
             
-            # Response header'larını al
+            # Get response headers
             if hasattr(self.ws, 'response_headers'):
                 hdrs = dict(self.ws.response_headers)
             elif hasattr(self.ws, 'response'):
@@ -64,7 +64,7 @@ class ws_connect:
             
             #logger.debug(f"Response headers: {hdrs}")
 
-            # İlk bağlantıda token'ı al
+            # Get token on first connection
             if not SESSION_TOKEN:
                 tok = hdrs.get("x-session-token")
                 if tok: 
@@ -91,26 +91,26 @@ def pack(ft, mid, payload=b""):
     return struct.pack("<BQ", ft, mid) + payload
 
 async def send_frame(ws, ft, mid, pl=b""):
-    # Frame oluştur
+    # Create frame
     frame = pack(ft, mid, pl)
-    # Hex formatında göster
+    # Show in hex format
     hex_str = ' '.join(f'{b:02x}' for b in frame)
     print(f"→ sending: [{hex_str}]")
-    # Binary olarak gönder
+    # Send as binary
     await ws.send(frame)
 
 async def recv_frame(ws, timeout=None):
     raw = await asyncio.wait_for(ws.recv(), timeout) if timeout else await ws.recv()
-    # Raw binary'i hex formatında göster
+    # Show raw binary in hex format
     hex_str = ' '.join(f'{b:02x}' for b in raw)
     print(f"→ got raw=[{hex_str}]")
     
-    # Frame'i parse et
-    ft  = raw[0]  # Frame tipi (1 byte)
+    # Parse frame
+    ft  = raw[0]  # Frame type (1 byte)
     mid = struct.unpack_from("<Q", raw, 1)[0]  # ID (8 byte)
     pl  = raw[9:]  # Payload
     
-    # Frame tipini string'e çevir
+    # Convert frame type to string
     ft_str = {
         FRAME_DATA: "DATA",
         FRAME_ACK: "ACK",
@@ -132,8 +132,8 @@ async def reliable_recv(ws, timeout=None):
             return ft, mid, pl
 
 IDLE_TTL   = 3.0          # server‑side, seconds
-WITHIN_TTL = 1.0          # 1 saniye (TTL'den kısa)
-AFTER_TTL = 4.0           # 4 saniye (TTL'den uzun)
+WITHIN_TTL = 1.0          # 1 second (shorter than TTL)
+AFTER_TTL = 4.0           # 4 seconds (longer than TTL)
 
 # ============================================================
 # 7) reconnect within TTL  → pending DATA replayed
@@ -142,19 +142,19 @@ async def test_resume_within_ttl():
     print("\n=== Test 7: Resume ≤ TTL — DATA replay ===")
     # 1) first connection
     async with ws_connect(SERVER_URI, open_timeout=30) as ws1:
-        # ID belirtmeden gönder (0 = belirtilmemiş)
+        # Send without specifying ID (0 = unspecified)
         await send_frame(ws1, FRAME_DATA, 0, b"echo:ping")
-        ft, mid, pl = await recv_frame(ws1)      # Server'ın ID'sini al
+        ft, mid, pl = await recv_frame(ws1)      # Get server's ID
         assert ft == FRAME_DATA and pl == b"ping"
-        # bilerek ACK YOLLAMAMA: pending1 kuyruğu dolu kalsın
+        # Intentionally don't send ACK: keep pending1 queue full
 
     await asyncio.sleep(WITHIN_TTL)                   # < idle timeout
     # 2) reconnect
     async with ws_connect(SERVER_URI) as ws2:
-        # reliable_recv yerine normal recv_frame kullan
+        # Use normal recv_frame instead of reliable_recv
         ft2, mid2, pl2 = await recv_frame(ws2, timeout=5)
         assert ft2 == FRAME_DATA and pl2 == b"ping"
-        # ACK gönder
+        # Send ACK
         await send_frame(ws2, FRAME_ACK, mid2)
         print("✔ pending DATA replayed & ACKed within TTL")
 
@@ -208,22 +208,21 @@ async def test_state_after_ttl():
     async with ws_connect(SERVER_URI) as ws2:
         val2 = await inc_counter(ws2)  # expect 1 again
         assert val2 == 1
-        print("✔ counter reset after idle TTL (new session)")
+        print("✔ counter reset after reconnect > TTL")
 
-# ------------------------------------------------------------
-# 11) Duplicate DATA frames from client
-#     Sunucu sadece *ilkini* işler, dup'u drop eder
-# ------------------------------------------------------------
+# 11) Client duplicate DATA (same ID)
 async def test_client_duplicate_data():
     print("\n=== Test 11: Client duplicate DATA ===")
     async with ws_connect(SERVER_URI) as ws:
-        # Aynı frame‑id ile iki kez DATA yolla
-        await send_frame(ws, FRAME_DATA, 0, b"echo:dup")  # ID=0
-        await send_frame(ws, FRAME_DATA, 0, b"echo:dup")  # ID=0
-        # get only first DATA
-        ft, mid, pl = await reliable_recv(ws)
-        assert ft == FRAME_DATA and pl == b"dup"
-        # ikinci bir cevap gelmemeli
+        # Send same DATA twice with same ID
+        await send_frame(ws, FRAME_DATA, 123, b"echo:duplicate")
+        await send_frame(ws, FRAME_DATA, 123, b"echo:duplicate")  # Same ID!
+        
+        # Should get only one response
+        ft, mid, pl = await reliable_recv(ws, timeout=2)
+        assert ft == FRAME_DATA and pl == b"duplicate"
+        
+        # Should not get second response
         try:
             await recv_frame(ws, timeout=1)
             raise AssertionError("Server echoed duplicate DATA twice")
@@ -231,35 +230,35 @@ async def test_client_duplicate_data():
             print("✔ duplicate DATA dropped")
 
 # ------------------------------------------------------------
-# 12) Out‑of‑order ACK (ACK gelmeden yeni DATA)
-#     Sunucu, eski DATA'yı *retry* kuyruğunda tutacak
+# 12) Out‑of‑order ACK (ACK without receiving new DATA)
+#     Server will keep old DATA in *retry* queue
 # ------------------------------------------------------------
 async def test_out_of_order_ack():
     print("\n=== Test 12: Out‑of‑order ACK ===")
     async with ws_connect(SERVER_URI) as ws:
-        # 1. Client FRAME_DATA ile başlıyor
-        frame = pack(FRAME_DATA, 0, b"counter:inc")  # Frame tipi + ID + payload
+        # 1. Client starts with FRAME_DATA
+        frame = pack(FRAME_DATA, 0, b"counter:inc")  # Frame type + ID + payload
         await ws.send(frame)
         
-        # 2. Server DATA frame ile cevap verir
+        # 2. Server responds with DATA frame
         ft1, mid1, pl1 = await recv_frame(ws)
         print(f"→ got ft={ft1!r}, mid={mid1!r}, payload={pl1!r}")
         assert ft1 == FRAME_DATA
-        assert pl1 == b"1"  # counter:inc sonucu
-        # ACK gönderme (out-of-order test için)
+        assert pl1 == b"1"  # counter:inc result
+        # Don't send ACK (for out-of-order test)
         
-        # 3. Server retry yapar (aynı DATA frame'i tekrar gönderir)
+        # 3. Server retries (sends same DATA frame again)
         ft2, mid2, pl2 = await recv_frame(ws, timeout=2)
         print(f"→ got ft={ft2!r}, mid={mid2!r}, payload={pl2!r}")
-        # Aynı frame gelmeli
-        assert ft2 == FRAME_DATA  # Aynı frame tipi
-        assert mid2 == mid1       # Aynı message ID
-        assert pl2 == pl1         # Aynı payload
+        # Should be same frame
+        assert ft2 == FRAME_DATA  # Same frame type
+        assert mid2 == mid1       # Same message ID
+        assert pl2 == pl1         # Same payload
         
-        # 4. Client ACK gönderir
+        # 4. Client sends ACK
         await send_frame(ws, FRAME_ACK, mid1)
         
-        # 5. Artık retry gelmemeli
+        # 5. Should not get retry anymore
         try:
             ft3, mid3, pl3 = await recv_frame(ws, timeout=1)
             raise AssertionError(f"Unexpected retry: ft={ft3}, mid={mid3}, pl={pl3}")
@@ -269,24 +268,24 @@ async def test_out_of_order_ack():
         print("✔ out‑of‑order ACK scenario passed")
 
 # ------------------------------------------------------------
-# 13) Frame‑ID wrap‑around (64‑bit sayacı taşır)
+# 13) Frame‑ID wrap‑around (64‑bit counter overflows)
 # ------------------------------------------------------------
 async def test_id_wraparound():
     print("\n=== Test 13: Frame‑ID wrap‑around ===")
     async with ws_connect(SERVER_URI) as ws:
         for off in range(3):
             print(f"\nDEBUG: Sending request {off}")
-            # Her istek için farklı ID kullan
+            # Use different ID for each request
             await send_frame(ws, FRAME_DATA, off, f"echo:{off}".encode())  # ID=off
             
             try:
                 print(f"DEBUG: Waiting for response {off}")
-                # Server'dan cevap bekle (reliable_recv otomatik ACK yollar)
-                ft, mid, pl = await reliable_recv(ws, timeout=2)  # 2 saniye timeout
+                # Wait for response from server (reliable_recv automatically sends ACK)
+                ft, mid, pl = await reliable_recv(ws, timeout=2)  # 2 second timeout
                 print(f"DEBUG: Got response {off}: ft={ft!r}, mid={mid!r}, payload={pl!r}")
                 assert ft == FRAME_DATA
                 
-                # payload kontrolü
+                # payload check
                 assert pl == f"{off}".encode()
                 print(f"DEBUG: Response {off} OK")
             except asyncio.TimeoutError:
@@ -297,7 +296,7 @@ async def test_id_wraparound():
 
 # ------------------------------------------------------------
 # 14) Parallel connections, same client‑id/device‑id
-#     • Conn‑A kapandığında Conn‑B hâlâ canlı; pending1 B'ye replay edilmesin
+#     • When Conn‑A closes, Conn‑B is still alive; pending1 should not replay to B
 # ------------------------------------------------------------
 async def test_parallel_same_identity():
     """Test that messages are properly handled when a client reconnects with the same identity."""
@@ -311,9 +310,9 @@ async def test_parallel_same_identity():
     # Send message to A without ACK
     print("Sending message to first connection without ACK")
     await send_frame(ws_a, FRAME_DATA, 0, b"test message 1")  # ID=0
-    ft, pa, pl = await recv_frame(ws_a)  # Server'ın atadığı ID'yi al
+    ft, pa, pl = await recv_frame(ws_a)  # Get server's assigned ID
     print(f"First message sent, server assigned ID: {pa}")
-    # ACK göndermiyoruz, mesaj pending1'de kalacak
+    # Don't send ACK, message will stay in pending1
     
     # Open second connection with same identity
     print("\nOpening second connection (ws_b) with same identity")
@@ -328,7 +327,7 @@ async def test_parallel_same_identity():
     # Send message to B
     print("\nSending message to second connection")
     await send_frame(ws_b, FRAME_DATA, 0, b"test message 2")  # ID=0
-    ft, pb, pl = await recv_frame(ws_b)  # Server'ın atadığı ID'yi al
+    ft, pb, pl = await recv_frame(ws_b)  # Get server's assigned ID
     print(f"Second message sent, server assigned ID: {pb}")
     
     # Receive and ACK both messages on B
@@ -337,7 +336,7 @@ async def test_parallel_same_identity():
     try:
         while len(received) < 2:
             print("Waiting for next message...")
-            ft, mid, pl = await recv_frame(ws_b, timeout=2)  # Sadece frame'i al, ACK yollama
+            ft, mid, pl = await recv_frame(ws_b, timeout=2)  # Just get frame, don't send ACK
             print(f"Received message: type={ft}, id={mid}, payload={pl}")
             received.add(mid)
             print(f"Current received set: {received}")
@@ -362,34 +361,32 @@ async def test_ack_flood():
     print("\n=== Test 15: ACK flood (defence) ===")
     async with ws_connect(SERVER_URI) as ws:
         for i in range(1000):
-            await send_frame(ws, FRAME_ACK, i)  # ACK'ler için ID kullanılabilir
-        await send_frame(ws, FRAME_DATA, 0, b"echo:flood")  # DATA için ID=0
+            await send_frame(ws, FRAME_ACK, i)  # ID can be used for ACKs
+        await send_frame(ws, FRAME_DATA, 0, b"echo:flood")  # ID=0 for DATA
         _, mid, pl = await reliable_recv(ws, timeout=2)
         assert pl == b"flood"
         print("✔ ACK flood did not break flow")
 
 # ---------- main runner ----------
 async def main():
-    # Eski testleri yorum satırına alıyoruz
-    # await test_resume_within_ttl()
-    # await asyncio.sleep(AFTER_TTL)
-    # await test_resume_after_ttl()
-    # await asyncio.sleep(AFTER_TTL)
-    # await test_state_within_ttl()
-    # await asyncio.sleep(AFTER_TTL)
-    # await test_state_after_ttl()
-    # await asyncio.sleep(AFTER_TTL)
-    # await test_client_duplicate_data()
-    # await asyncio.sleep(AFTER_TTL)
-    # await test_out_of_order_ack()
-    # await asyncio.sleep(AFTER_TTL)
-    # await test_id_wraparound()
-    # await asyncio.sleep(AFTER_TTL)
-    # await test_parallel_same_identity()
-    # await asyncio.sleep(AFTER_TTL)
-    # await test_ack_flood()
-    
-    # Yeni testimizi çalıştırıyoruz
+    await test_resume_within_ttl()
+    await asyncio.sleep(AFTER_TTL)
+    await test_resume_after_ttl()
+    await asyncio.sleep(AFTER_TTL)
+    await test_state_within_ttl()
+    await asyncio.sleep(AFTER_TTL)
+    await test_state_after_ttl()
+    await asyncio.sleep(AFTER_TTL)
+    await test_client_duplicate_data()
+    await asyncio.sleep(AFTER_TTL)
+    await test_out_of_order_ack()
+    await asyncio.sleep(AFTER_TTL)
+    await test_id_wraparound()
+    await asyncio.sleep(AFTER_TTL)
+    await test_parallel_same_identity()
+    await asyncio.sleep(AFTER_TTL)
+    await test_ack_flood()
+    await asyncio.sleep(AFTER_TTL)    
     await test_offline_message_delivery()
     print("\n🎉 Offline message delivery test passed!")
 
@@ -403,24 +400,24 @@ class WebSocketClient:
         self.session_token = None
 
     async def connect(self):
-        # WebSocket bağlantı URL'i
+        # WebSocket connection URL
         uri = "ws://localhost:9010"
         
-        # Header'ları hazırla
+        # Prepare headers
         headers = {
             "x-client-id": self.client_id,
             "x-device-id": self.device_id
         }
         
-        # Eğer session token varsa ekle
+        # Add session token if available
         if self.session_token:
             headers["x-session-token"] = self.session_token
             print(f"Using existing session token: {self.session_token}")
         
-        # Bağlantıyı kur
+        # Establish connection
         self.ws = await websockets.connect(uri, additional_headers=headers)
         
-        # Response header'larından session token'ı al
+        # Get session token from response headers
         if hasattr(self.ws, 'response_headers'):
             headers = dict(self.ws.response_headers)
             if "x-session-token" in headers:
@@ -435,7 +432,7 @@ class WebSocketClient:
         self.connected = True
         print(f"Connected with client_id: {self.client_id}, device_id: {self.device_id}")
         
-        # Mesaj dinleme task'ını başlat
+        # Start message listening task
         asyncio.create_task(self.listen_messages())
 
     async def disconnect(self):
@@ -448,10 +445,10 @@ class WebSocketClient:
         if not self.connected:
             raise Exception("Not connected")
         
-        # RPC mesajını hazırla
+        # Prepare RPC message
         message = f"{method}:{params}"
         
-        # Frame gönder
+        # Send frame
         await send_frame(self.ws, FRAME_DATA, 0, message.encode())
         print(f"Sent RPC: {method} with params: {params}")
 
@@ -472,57 +469,57 @@ class WebSocketClient:
 
 async def test_offline_message_delivery():
     try:
-        # 1. X kullanıcısı bağlanır ve login olur
+        # 1. User X connects and logs in
         x_client = WebSocketClient("client_x", "dev_1")
         await x_client.connect()
         await x_client.send_rpc("login", "X:user")
         
-        # İlk session token'ı sakla
+        # Store first session token
         first_token = x_client.session_token
         print(f"First session token: {first_token}")
         
-        # Premium özelliğinin eklendiğini kontrol et
-        await asyncio.sleep(1)  # Sunucunun işlemi tamamlaması için bekle
+        # Check that premium feature is added
+        await asyncio.sleep(1)  # Wait for server to complete processing
         
-        # 2. X kullanıcısının bağlantısını kapat
+        # 2. Close X user's connection
         await x_client.disconnect()
         
-        # 3. Y kullanıcısı bağlanır ve birden fazla mesaj gönderir
+        # 3. User Y connects and sends multiple messages
         y_client = WebSocketClient("client_y", "dev_2")
         await y_client.connect()
         
-        # 10 farklı mesaj gönder
+        # Send 10 different messages
         messages = []
         for i in range(10):
             message = f"test message {i+1}"
             messages.append(message)
             await y_client.send_rpc("sendToPremium", message)
             print(f"Y sent message {i+1}: {message}")
-            await asyncio.sleep(0.1)  # Mesajlar arası kısa bir bekleme
+            await asyncio.sleep(0.1)  # Short wait between messages
         
-        # 4. X kullanıcısı tekrar bağlanır (aynı session token ile)
-        await asyncio.sleep(1)  # Mesajların kuyruğa alınması için bekle
-        x_client.session_token = first_token  # İlk token'ı kullan
+        # 4. User X reconnects (with same session token)
+        await asyncio.sleep(1)  # Wait for messages to be queued
+        x_client.session_token = first_token  # Use first token
         await x_client.connect()
         await x_client.send_rpc("login", "X:user")
         
-        # 5. X kullanıcısının tüm mesajları alıp almadığını kontrol et
-        await asyncio.sleep(2)  # Mesajların iletilmesi için bekle
+        # 5. Check if user X received all messages
+        await asyncio.sleep(2)  # Wait for messages to be delivered
         
         received_messages = x_client.get_received_messages()
         print(f"\nReceived messages: {received_messages}")
         
-        # Her mesajın alındığını kontrol et
+        # Check that each message was received
         for message in messages:
-            assert any(message in msg for msg in received_messages), f"X kullanıcısı '{message}' mesajını almadı!"
+            assert any(message in msg for msg in received_messages), f"User X did not receive message '{message}'!"
         
-        print(f"\nTest başarılı! X kullanıcısı tüm {len(messages)} mesajı aldı.")
+        print(f"\nTest successful! User X received all {len(messages)} messages.")
         
     except Exception as e:
-        print(f"Test başarısız: {e}")
+        print(f"Test failed: {e}")
         raise
     finally:
-        # Bağlantıları temizle
+        # Clean up connections
         if 'x_client' in locals():
             await x_client.disconnect()
         if 'y_client' in locals():

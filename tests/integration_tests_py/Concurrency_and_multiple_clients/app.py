@@ -6,11 +6,11 @@ async def client_task(client_id, port=9000):
     uri = f"ws://localhost:{port}"
     username = f"user_{client_id}"
 
-    # Header'ları hazırla
+    # Prepare headers
     headers = {
         "x-client-id": str(client_id),
         "x-device-id": f"dev_{client_id}"
-        # "x-session-token": "...",  # Gerekirse ekle
+        # "x-session-token": "...",  # Add if necessary
     }
 
     async with websockets.connect(uri, additional_headers=headers) as websocket:

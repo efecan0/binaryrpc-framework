@@ -3,7 +3,7 @@ import asyncio, struct, time, inspect, websockets, os, random
 import logging
 from typing import List
 
-# Frame tipleri
+# Frame types
 FRAME_DATA = 0
 FRAME_ACK = 1
 FRAME_PREPARE = 2
@@ -11,7 +11,7 @@ FRAME_PREPARE_ACK = 3
 FRAME_COMMIT = 4
 FRAME_COMPLETE = 5
 
-# Frame type'ı string'e çeviren helper fonksiyon
+# Helper function to convert frame type to string
 def frameTypeToString(ft):
     return {
         FRAME_DATA: "DATA",
@@ -22,19 +22,19 @@ def frameTypeToString(ft):
         FRAME_COMPLETE: "COMPLETE"
     }.get(ft, f"UNKNOWN({ft})")
 
-# Bağlantı sabitleri
+# Connection constants
 SERVER_URI = os.getenv("binaryrpc_qos2_integration_test", "ws://localhost:9010")
 #CID = "cli-777"
-CID = f"cli-{random.randint(1000, 9999)}"  # Her test için unique ID
+CID = f"cli-{random.randint(1000, 9999)}"  # Unique ID for each test
 DID = "dev-777"
 SESSION_TOKEN = ""  # global, will be filled on 1st 101
 
-# Timeout sabitleri
+# Timeout constants
 IDLE_TTL = 3.0          # server‑side, seconds
-WITHIN_TTL = 1.0        # 1 saniye (TTL'den kısa)
-AFTER_TTL = 5.0         # 4 saniye (TTL'den uzun)
+WITHIN_TTL = 1.0        # 1 second (shorter than TTL)
+AFTER_TTL = 5.0         # 4 seconds (longer than TTL)
 
-# Bağlantı yardımcıları
+# Connection helpers
 def make_headers():
     hdrs = [
         ("x-client-id", CID),
@@ -85,7 +85,7 @@ class ws_connect:
             except Exception as e:
                 print(f"Error while closing connection: {e}")
 
-# Frame yardımcıları
+# Frame helpers
 def pack(ft, mid, payload=b""):
     return struct.pack(">BQ", ft, mid) + payload
 
@@ -193,7 +193,7 @@ async def inc_counter(ws):
     print(f"DEBUG: Got response: {pl}")
     return int(pl.decode())
 
-# Test senaryoları
+# Test scenarios
 async def test_resume_within_ttl():
     """Test QoS2 flow with connection resume within TTL"""
     print("\nDEBUG: Opening first connection...")
@@ -324,11 +324,11 @@ async def test_state_after_ttl():
 def wait_for_frame(ws, expected_type, expected_id=None, timeout=3.0, allow_retries=True, retry_types=None):
     """
     ws: websocket
-    expected_type: beklenen frame tipi (int)
-    expected_id: beklenen frame id'si (int veya None)
-    timeout: toplam bekleme süresi
-    allow_retries: retry/replay frame'lerini toleranslı işle
-    retry_types: retry olarak kabul edilecek frame tipleri (liste)
+    expected_type: expected frame type (int)
+    expected_id: expected frame ID (int or None)
+    timeout: total wait time
+    allow_retries: tolerate retry/replay frames
+    retry_types: frame types to accept as retry
     """
     import asyncio, time
     if retry_types is None:
@@ -341,13 +341,13 @@ def wait_for_frame(ws, expected_type, expected_id=None, timeout=3.0, allow_retri
                 if ft == expected_type and (expected_id is None or fid == expected_id):
                     return ft, fid, payload
                 elif allow_retries and ft in retry_types and (expected_id is None or fid == expected_id):
-                    print(f"[wait_for_frame] Retry/replay frame geldi: {frameTypeToString(ft)}, ID: {fid}, beklenen: {frameTypeToString(expected_type)}, {expected_id}")
+                    print(f"[wait_for_frame] Retry/replay frame received: {frameTypeToString(ft)}, ID: {fid}, expected: {frameTypeToString(expected_type)}, {expected_id}")
                     continue
                 else:
-                    print(f"[wait_for_frame] Beklenmeyen frame: {frameTypeToString(ft)}, ID: {fid}, payload: {payload}")
+                    print(f"[wait_for_frame] Unexpected frame: {frameTypeToString(ft)}, ID: {fid}, payload: {payload}")
             except asyncio.TimeoutError:
                 continue
-        raise asyncio.TimeoutError(f"Beklenen frame gelmedi: {frameTypeToString(expected_type)}, ID: {expected_id}")
+        raise asyncio.TimeoutError(f"Expected frame not received: {frameTypeToString(expected_type)}, ID: {expected_id}")
     return _wait()
 
 async def test_duplicate_data():
@@ -864,19 +864,19 @@ class WebSocketClient:
 
 async def test_offline_message_delivery():
     try:
-        # Genel timeout için başlangıç zamanı
+        # General timeout for start time
         start_time = time.time()
-        MAX_TEST_DURATION = 7  # 7 saniye
+        MAX_TEST_DURATION = 7  # 7 seconds
         
-        # 1. X kullanıcısı bağlanır ve login olur
-        x_client = WebSocketClient("client_x", "dev_1")  # X için farklı credentials
+        # 1. X user connects and logs in
+        x_client = WebSocketClient("client_x", "dev_1")  # Different credentials for X
         await x_client.connect()
         print("\nX client connected and starting login...")
         
-        # Login için QoS2 flow
+        # Login using QoS2 flow
         await send_frame(x_client.ws, FRAME_DATA, 0, b"login:X:user") # client mid 0
         
-        # PREPARE frame'ini bekle ve retry'ları handle et
+        # Wait for PREPARE and handle retries
         while True:
             ft_prepare_login, fid_prepare_login, _ = await x_client.recv_frame()
             if ft_prepare_login == FRAME_PREPARE:
@@ -887,7 +887,7 @@ async def test_offline_message_delivery():
             else:
                 print(f"X Login: Ignoring unexpected frame type {frameTypeToString(ft_prepare_login)} while waiting for PREPARE")
         
-        # COMMIT frame'ini bekle ve retry'ları handle et
+        # Wait for COMMIT and handle retries
         while True:
             ft_commit_login, fid_commit_login, _ = await x_client.recv_frame()
             if ft_commit_login == FRAME_COMMIT:
@@ -902,7 +902,7 @@ async def test_offline_message_delivery():
             else:
                 print(f"X Login: Ignoring unexpected frame type {frameTypeToString(ft_commit_login)} while waiting for COMMIT")
         
-        # Login yanıtını bekle (DATA frame)
+        # Wait for login response (DATA frame)
         while True:
             ft_data_login, fid_data_login, _ = await x_client.recv_frame()
             if ft_data_login == FRAME_DATA:
@@ -919,24 +919,24 @@ async def test_offline_message_delivery():
         
         print("X client login completed")
         
-        # İlk session token'ı sakla
+        # Store the first session token
         first_token = x_client.session_token
         print(f"First session token: {first_token}")
         
-        # 2. X kullanıcısının bağlantısını kapat
+        # 2. Disconnect X client
         print("\nDisconnecting X client...")
         await x_client.disconnect()
         
-        # 3. Y kullanıcısı bağlanır ve birden fazla mesaj gönderir
+        # 3. Y user connects and sends multiple messages
         print("\nY client connecting...")
-        y_client = WebSocketClient("client_y", "dev_2")  # Y için farklı credentials
+        y_client = WebSocketClient("client_y", "dev_2")  # Different credentials for Y
         await y_client.connect()
         print("Y client connected")
         
-        # 10 farklı mesaj gönder
+        # Send 10 different messages
         messages = []
         for i in range(10):
-            # Genel timeout kontrolü
+            # General timeout check
             if time.time() - start_time > MAX_TEST_DURATION:
                 raise TimeoutError(f"Test exceeded maximum duration of {MAX_TEST_DURATION} seconds")
                 
@@ -944,10 +944,10 @@ async def test_offline_message_delivery():
             messages.append(message)
             print(f"\nSending message {i+1}...")
             
-            # Her mesaj için QoS2 flow
+            # For each message, use QoS2 flow
             await send_frame(y_client.ws, FRAME_DATA, 0, f"sendToPremium:{message}".encode())
             
-            # PREPARE frame'ini bekle ve retry'ları handle et
+            # Wait for PREPARE and handle retries
             while True:
                 ft_prepare_y, fid_prepare_y, _ = await y_client.recv_frame()
                 if ft_prepare_y == FRAME_PREPARE:
@@ -958,7 +958,7 @@ async def test_offline_message_delivery():
                 else:
                     print(f"Y: Ignoring unexpected frame type {frameTypeToString(ft_prepare_y)} while waiting for PREPARE")
             
-            # COMMIT frame'ini bekle ve retry'ları handle et
+            # Wait for COMMIT and handle retries
             while True:
                 ft_commit_y, fid_commit_y, _ = await y_client.recv_frame()
                 if ft_commit_y == FRAME_COMMIT:
@@ -973,7 +973,7 @@ async def test_offline_message_delivery():
                 else:
                     print(f"Y: Ignoring unexpected frame type {frameTypeToString(ft_commit_y)} while waiting for COMMIT")
             
-            # DATA frame'ini bekle ve retry'ları handle et
+            # Wait for DATA and handle retries
             while True:
                 ft_data_y, fid_data_y, pl_data_y = await y_client.recv_frame()
                 if ft_data_y == FRAME_DATA:
@@ -990,24 +990,24 @@ async def test_offline_message_delivery():
             
             print(f"Y sent message {i+1}: {message}")
         
-        # Y client'ı kapat
+        # Close Y client
         print("\nDisconnecting Y client...")
         await y_client.disconnect()
         
-        # 4. X kullanıcısı tekrar bağlanır (aynı session token ile)
+        # 4. X user reconnects (with the same session token)
         print("\nReconnecting X client...")
         x_client.session_token = first_token
         await x_client.connect()
         print("X client reconnected")
         
-        # 5. X kullanıcısının tüm mesajları almasını bekle
+        # Wait for X to receive all messages
         print("\nWaiting for X to receive all messages...")
         
-        # Mesajları işle
+        # Process messages
         received_messages_content = []
         
         while len(received_messages_content) < len(messages):
-            # Genel timeout kontrolü
+            # General timeout check
             if time.time() - start_time > MAX_TEST_DURATION:
                 raise TimeoutError(f"Test exceeded maximum duration of {MAX_TEST_DURATION} seconds while X receiving. Received {len(received_messages_content)}/{len(messages)}")
                 
@@ -1048,29 +1048,28 @@ async def test_offline_message_delivery():
                 print(f"X: Error in message receiving loop: {e_loop}")
                 raise
         
-        # İşlenen mesajları kontrol et
+        # Check processed messages
         print(f"\nReceived messages content by X: {received_messages_content}")
         print(f"Expected messages: {messages}")
         
-        # Her mesajın alındığını kontrol et (sayı ve içerik)
+        # Check if each message was received (count and content)
         assert len(received_messages_content) == len(messages), \
             f"X client did not receive all messages. Expected {len(messages)}, got {len(received_messages_content)}. Received: {received_messages_content}"
 
         for message_expected in messages:
-            assert message_expected in received_messages_content, f"X kullanıcısı '{message_expected}' mesajını almadı! Alınanlar: {received_messages_content}"
+            assert message_expected in received_messages_content, f"X user did not receive '{message_expected}' message! Received: {received_messages_content}"
         
-        print(f"\nTest başarılı! X kullanıcısı {len(received_messages_content)} mesajı aldı.")
+        print(f"\nTest successful! X user received {len(received_messages_content)} messages.")
         
     except Exception as e:
-        print(f"Test başarısız: {e}")
+        print(f"Test failed: {e}")
         raise
     finally:
-        # Sadece X client'ı temizle
+        # Only clean up X client
         if 'x_client' in locals():
             await x_client.disconnect()
 
 async def main():
-    # Eski testleri yorum satırına alıyoruz
     await test_resume_within_ttl()
     await asyncio.sleep(AFTER_TTL)
     await test_resume_after_ttl()
@@ -1095,9 +1094,8 @@ async def main():
     await asyncio.sleep(AFTER_TTL)
     await test_qos2_retry_after_reconnect()
     await asyncio.sleep(AFTER_TTL)
-    # Yeni testimizi çalıştırıyoruz
     await test_offline_message_delivery()
-    print("\n🎉 ALL test passed!")
+    print("\n�� ALL test passed!")
 
 if __name__ == "__main__":
     asyncio.run(main())

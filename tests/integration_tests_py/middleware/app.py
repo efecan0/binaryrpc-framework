@@ -22,12 +22,12 @@ async def test_rpc(method, payload):
         else:
             print(f"[Client ⚠️] Text response received: {response}")
 
-# Normal başarılı çağrı
+# Normal successful call
 asyncio.run(test_rpc("login", "test payload"))
 asyncio.run(test_rpc("test.middleware", "another payload"))
 
-# next() atlanmış zincir
+# Chain with missing next()
 asyncio.run(test_rpc("stuck.method", "should fail"))
 
-# middleware throw fırlatan
+# Middleware that throws
 asyncio.run(test_rpc("throw.method", "should throw"))
