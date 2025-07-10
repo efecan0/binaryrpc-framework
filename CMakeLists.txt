@@ -161,9 +161,9 @@ if (BINARYRPC_BUILD_TESTS)
 endif()
 
 option(BUILD_EXAMPLES "Build example programs" ON)
-#if(BUILD_EXAMPLES)
-#    add_subdirectory(examples)
-#endif()
+if(BUILD_EXAMPLES)
+    add_subdirectory(example_server)
+endif()
 
 # ----------------------
 # Integration/regression test executables
