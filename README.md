@@ -197,7 +197,7 @@ To use BinaryRPC in your own CMake project, simply add the following to your `CM
 
 ```cmake
 # Find the installed binaryrpc package
-find_package(binaryrpc 0.1.0 REQUIRED)
+find_package(binaryrpc REQUIRED)
 
 # ...
 
