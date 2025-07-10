@@ -1120,7 +1120,7 @@ app.registerRPC("place_bet", [&](const auto& req, auto& ctx) {
 
 ## 💻 Client-Side Usage (JavaScript)
 
-The repository ships with a minimal reference client in `examples/client/index.html`. It demonstrates the basic connection and RPC call flow:
+For a production‑ready browser client, check binaryrpc‑client‑js → https://github.com/efecan0/binaryrpc-client-js.
 
 ```js
 import  "./binaryrpc.js";
@@ -1137,9 +1137,11 @@ rpc.connect("user‑42", "web", /*sessionToken*/ null);
 rpc.call("broadcast", { message:  "hello" });
 ```
 
-Internally the helper wraps the QoS handshake and keeps an outbox so messages typed while offline flush once the socket is back. You can plug your own MessagePack/JSON codec by swapping `MessagePack.encode/decode`.
+The helper wraps the QoS handshake and queues outbound messages while offline. If you prefer another codec, simply replace MessagePack.encode/decode.
 
 ```
+
+---
 
 ## 🧪 Running Tests
 
