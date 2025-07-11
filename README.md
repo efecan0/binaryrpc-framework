@@ -44,10 +44,7 @@ In the future, I aim to evolve this architecture into an actor-mailbox model. Ho
 
 ---
 
-## 🚀 Getting Started
-
-This project is structured as a standalone, installable library. The recommended way to use it is to build and install the library first, then link against it in your own project. The `examples` directory is provided as a separate project to demonstrate this usage.
-
+This project is a modern C++ RPC framework with several external dependencies. To use it, you should first install the required dependencies (see below), then build the project, and finally link it in your own project. The example_server directory demonstrates typical usage.
 ### 1. Prerequisites
 
 - **CMake**: Version 3.16 or higher.
