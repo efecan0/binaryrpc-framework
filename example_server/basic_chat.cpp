@@ -184,12 +184,10 @@ int main() {
     RoomPlugin* roomPtr = roomPlugin.get();
     app.usePlugin(std::move(roomPlugin));
 
-    //app.use(rateLimiter(10, 5));
-
     app.registerRPC("join", [&](auto const& req, RpcContext& ctx) {
         auto payload = parseMsgPackPayload(req);
-        std::string user = payload["username"].get<std::string>();
-        std::string roomname = payload["roomname"].get<std::string>();
+        std::string user = payload["username"].template get<std::string>();
+        std::string roomname = payload["roomname"].template get<std::string>();
 
         api.setField(ctx.session().id(), "username", user, /*indexed=*/true);
         api.setField(ctx.session().id(), "activeRoom", roomname, /*indexed=*/true);
@@ -199,7 +197,6 @@ int main() {
         message["message"] = "You have joined the room";
         std::string jsonStr = message.dump();   
         std::vector<uint8_t> outgoingBytes(jsonStr.begin(), jsonStr.end());
-        auto sessionPtr = app.getSessionManager().getSession(ctx.session().id());
         ctx.reply(app.getProtocol()->serialize("message" ,outgoingBytes));
         });
 
@@ -220,7 +217,7 @@ int main() {
 
     app.registerRPC("say", [&](auto const& req, RpcContext& ctx) {
         auto payload = parseMsgPackPayload(req);
-        std::string sayMessage = payload["message"].get<std::string>();
+        std::string sayMessage = payload["message"].template get<std::string>();
         auto optRoom = api.getField<std::string>(ctx.session().id(), "activeRoom");
         auto optUserName = api.getField<std::string>(ctx.session().id(), "username");
         nlohmann::json message;
