@@ -27,7 +27,7 @@ if(WIN32)
             CACHE STRING "Vcpkg toolchain file")
     endif()
     include_directories("${VCPKG_ROOT}/installed/x64-windows/include")
-    find_package(uwebsockets CONFIG REQUIRED)
+    find_package(unofficial-uwebsockets CONFIG REQUIRED)
     find_package(ZLIB            REQUIRED)
     find_package(Threads         REQUIRED)
     find_package(jwt-cpp CONFIG  REQUIRED)
@@ -35,34 +35,19 @@ if(WIN32)
     find_package(glog CONFIG REQUIRED)
     find_package(gflags CONFIG REQUIRED)
     find_package(double-conversion CONFIG REQUIRED)
-    find_library(FOLLY_LIBRARY NAMES folly PATHS "${VCPKG_ROOT}/installed/x64-windows/lib")
+    find_package(folly CONFIG REQUIRED)
     find_package(fmt CONFIG REQUIRED)
 else() # UNIX/Linux
     add_compile_options(-finput-charset=UTF-8 -fexec-charset=UTF-8)
     
     # If not using vcpkg on Linux, find packages manually
-    if(NOT CMAKE_TOOLCHAIN_FILE)
-        find_path(UWEBSOCKETS_INCLUDE_DIR uWebSockets/App.h PATHS /usr/include /usr/local/include)
-        find_library(USOCKETS_LIBRARY usockets PATHS /usr/lib /usr/local/lib)
-        if(NOT UWEBSOCKETS_INCLUDE_DIR)
-            message(FATAL_ERROR "uWebSockets include directory not found!")
-        endif()
-        if(NOT USOCKETS_LIBRARY)
-            message(FATAL_ERROR "uSockets library not found!")
-        endif()
-    endif()
-
+    find_package(unofficial-uwebsockets CONFIG REQUIRED)
     find_package(OpenSSL REQUIRED)
     find_package(ZLIB REQUIRED)
     find_package(Threads REQUIRED)
     find_package(nlohmann_json REQUIRED)
     set(JWT_CPP_INCLUDE_DIR /usr/include/jwt-cpp)
-    
-    # Find folly
-    find_library(FOLLY_LIBRARY NAMES folly PATHS /usr/lib /usr/local/lib)
-    if(NOT FOLLY_LIBRARY)
-        message(FATAL_ERROR "folly library not found! Please install folly: sudo pacman -S folly")
-    endif()
+    find_package(folly CONFIG REQUIRED)
     
     # Required definitions for glog
     add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
@@ -128,12 +113,13 @@ endif()
 
 if(WIN32)
     target_link_libraries(binaryrpc_core PUBLIC
-        uwebsockets::uwebsockets
+        unofficial::uwebsockets::uwebsockets
         ZLIB::ZLIB
         Threads::Threads
         # jwt-cpp::jwt-cpp is only needed if ENABLE_JWT is ON
         $<$<BOOL:${ENABLE_JWT}>:jwt-cpp::jwt-cpp>
-        ${FOLLY_LIBRARY}
+        Folly::folly Folly::folly_deps Folly::follybenchmark Folly::folly_test_util
+
         glog::glog
         gflags::gflags
         fmt::fmt
@@ -141,8 +127,7 @@ if(WIN32)
     )
 else()
     target_link_libraries(binaryrpc_core PUBLIC
-        $<$<TARGET_EXISTS:uwebsockets::uwebsockets>:uwebsockets::uwebsockets>
-        $<$<NOT:$<TARGET_EXISTS:uwebsockets::uwebsockets>>:${USOCKETS_LIBRARY}>
+        unofficial::uwebsockets::uwebsockets
         pthread
         ZLIB::ZLIB
         Threads::Threads
@@ -150,7 +135,7 @@ else()
         # nlohmann_json::nlohmann_json is only needed if ENABLE_JSON_EXAMPLES is ON
         $<$<BOOL:${ENABLE_JSON_EXAMPLES}>:nlohmann_json::nlohmann_json>
         ${GLOG_LIBRARY}
-        ${FOLLY_LIBRARY}
+        Folly::folly Folly::folly_deps Folly::follybenchmark Folly::folly_test_util
     )
 endif()
 

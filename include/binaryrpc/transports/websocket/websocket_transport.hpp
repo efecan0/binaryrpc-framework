@@ -21,7 +21,7 @@
 #include "binaryrpc/core/util/hex.hpp"
 #include "binaryrpc/core/util/random.hpp"
 #include "binaryrpc/core/util/time.hpp"
-#include <uWebSockets/App.h>
+#include <uwebsockets/App.h>
 #include <folly/Synchronized.h>
 #include <folly/container/F14Map.h>
 #include <folly/SharedMutex.h>
