@@ -80,3 +80,7 @@ tests/RUN_TESTS.vcxproj*
 examples/
 
 tests/Memory_leak_stress_test_py/
+
+# VCPKG
+vcpkg_installed
+vcpkg-configuration.json

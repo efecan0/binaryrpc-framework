@@ -27,13 +27,8 @@ Thank you for your interest in contributing to BinaryRPC! This document provides
 git clone https://github.com/your-username/binaryrpc.git
 cd binaryrpc
 
-# Install dependencies via vcpkg
-vcpkg install uwebsockets jwt-cpp cpr nlohmann-json folly glog gflags fmt
-
-# Configure and build
-mkdir build && cd build
-cmake .. -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
-cmake --build . --config Release
+cmake --preset development
+cmake --build .
 
 # Run tests
 ctest --output-on-failure
