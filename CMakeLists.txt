@@ -30,7 +30,6 @@ if(WIN32)
     find_package(Threads         REQUIRED)
     find_package(jwt-cpp CONFIG  REQUIRED)
     find_package(folly CONFIG REQUIRED)
-    find_package(fmt CONFIG REQUIRED)
     find_package(msgpack-cxx CONFIG REQUIRED)
 else() # UNIX/Linux
     add_compile_options(-finput-charset=UTF-8 -fexec-charset=UTF-8)
@@ -96,7 +95,6 @@ if(WIN32)
         $<$<BOOL:${ENABLE_JWT}>:jwt-cpp::jwt-cpp>
         Folly::folly Folly::folly_deps Folly::follybenchmark Folly::folly_test_util
 
-        fmt::fmt
         msgpack-cxx
     )
 else()
