@@ -30,7 +30,6 @@ namespace binaryrpc {
 
     /* ---------- utility  ---------- */
     inline void hashCombine(std::size_t& seed, std::size_t v) noexcept {
-        // boost::hash_combine eşleniği (64-bit uyumlu)
         seed ^= v + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
     }
 

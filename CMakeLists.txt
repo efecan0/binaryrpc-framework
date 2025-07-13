@@ -32,7 +32,6 @@ if(WIN32)
     find_package(Threads         REQUIRED)
     find_package(jwt-cpp CONFIG  REQUIRED)
     find_package(nlohmann_json CONFIG REQUIRED)
-    find_package(Boost REQUIRED COMPONENTS thread)
     find_package(glog CONFIG REQUIRED)
     find_package(gflags CONFIG REQUIRED)
     find_package(double-conversion CONFIG REQUIRED)
@@ -127,7 +126,6 @@ if(WIN32)
         unofficial::uwebsockets::uwebsockets
         ZLIB::ZLIB
         Threads::Threads
-        Boost::thread
         # jwt-cpp::jwt-cpp is only needed if ENABLE_JWT is ON
         $<$<BOOL:${ENABLE_JWT}>:jwt-cpp::jwt-cpp>
         ${FOLLY_LIBRARY}

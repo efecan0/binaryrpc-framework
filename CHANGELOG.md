@@ -75,7 +75,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Google logging (glog) for logging
 - Google flags (gflags) for configuration
 - fmt for string formatting
-- Boost.Thread for threading utilities
 
 ---
 

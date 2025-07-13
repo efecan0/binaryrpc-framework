@@ -83,18 +83,18 @@ These are required for building and running the core framework:
 
 ### Windows (vcpkg)
 ```bash
-./vcpkg install unofficial-uwebsockets zlib boost-thread folly glog gflags fmt double-conversion --triplet x64-windows
+./vcpkg install unofficial-uwebsockets zlib folly glog gflags fmt double-conversion --triplet x64-windows
 ```
 
 ### Linux (Arch/pacman)
 ```bash
-sudo pacman -S uwebsockets zlib boost folly glog gflags fmt double-conversion openssl usockets
+sudo pacman -S uwebsockets zlib folly glog gflags fmt double-conversion openssl usockets
 ```
 
 ### Linux (Ubuntu/Debian)
 ```bash
 sudo apt update
-sudo apt install libuwebsockets-dev zlib1g-dev libboost-thread-dev libfolly-dev libgoogle-glog-dev libgflags-dev libfmt-dev libdouble-conversion-dev libssl-dev libusockets-dev
+sudo apt install libuwebsockets-dev zlib1g-dev libfolly-dev libgoogle-glog-dev libgflags-dev libfmt-dev libdouble-conversion-dev libssl-dev libusockets-dev
 ```
 
 > **Note on folly and glog:**
