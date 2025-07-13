@@ -14,7 +14,6 @@ if(WIN32)
         set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
         add_compile_options(/EHsc /W4 /permissive- /analyze /utf-8)
         add_definitions(-D_WIN32_WINNT=0x0601 -DWIN32_LEAN_AND_MEAN -DNOMINMAX)
-        add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
     endif()
     # Check VCPKG_ROOT environment variable
     if(NOT DEFINED ENV{VCPKG_ROOT})
@@ -28,13 +27,9 @@ if(WIN32)
     endif()
     include_directories("${VCPKG_ROOT}/installed/x64-windows/include")
     find_package(unofficial-uwebsockets CONFIG REQUIRED)
-    find_package(ZLIB            REQUIRED)
     find_package(Threads         REQUIRED)
     find_package(jwt-cpp CONFIG  REQUIRED)
     find_package(nlohmann_json CONFIG REQUIRED)
-    find_package(glog CONFIG REQUIRED)
-    find_package(gflags CONFIG REQUIRED)
-    find_package(double-conversion CONFIG REQUIRED)
     find_package(folly CONFIG REQUIRED)
     find_package(fmt CONFIG REQUIRED)
 else() # UNIX/Linux
@@ -43,28 +38,10 @@ else() # UNIX/Linux
     # If not using vcpkg on Linux, find packages manually
     find_package(unofficial-uwebsockets CONFIG REQUIRED)
     find_package(OpenSSL REQUIRED)
-    find_package(ZLIB REQUIRED)
     find_package(Threads REQUIRED)
     find_package(nlohmann_json REQUIRED)
     set(JWT_CPP_INCLUDE_DIR /usr/include/jwt-cpp)
     find_package(folly CONFIG REQUIRED)
-    
-    # Required definitions for glog
-    add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
-    add_definitions(-DGOOGLE_GLOG_DLL_DECL=)
-    add_definitions(-DGLOG_EXPORT=)
-    add_definitions(-DGLOG_NO_EXPORT=)
-    add_definitions(-DGLOG_DEPRECATED=)
-    add_definitions(-DGLOG_NO_EXPORT=)
-    
-    # Disable glog (if incompatible with folly)
-    add_definitions(-DGOOGLE_GLOG_DISABLE_LOGGING)
-    
-    # Find glog
-    find_library(GLOG_LIBRARY NAMES glog PATHS /usr/lib /usr/local/lib)
-    if(NOT GLOG_LIBRARY)
-        message(FATAL_ERROR "glog library not found!")
-    endif()
 endif()
 
 # ----------------------
@@ -114,27 +91,21 @@ endif()
 if(WIN32)
     target_link_libraries(binaryrpc_core PUBLIC
         unofficial::uwebsockets::uwebsockets
-        ZLIB::ZLIB
         Threads::Threads
         # jwt-cpp::jwt-cpp is only needed if ENABLE_JWT is ON
         $<$<BOOL:${ENABLE_JWT}>:jwt-cpp::jwt-cpp>
         Folly::folly Folly::folly_deps Folly::follybenchmark Folly::folly_test_util
 
-        glog::glog
-        gflags::gflags
         fmt::fmt
-        double-conversion::double-conversion
     )
 else()
     target_link_libraries(binaryrpc_core PUBLIC
         unofficial::uwebsockets::uwebsockets
         pthread
-        ZLIB::ZLIB
         Threads::Threads
         OpenSSL::Crypto
         # nlohmann_json::nlohmann_json is only needed if ENABLE_JSON_EXAMPLES is ON
         $<$<BOOL:${ENABLE_JSON_EXAMPLES}>:nlohmann_json::nlohmann_json>
-        ${GLOG_LIBRARY}
         Folly::folly Folly::folly_deps Folly::follybenchmark Folly::folly_test_util
     )
 endif()
@@ -171,8 +142,5 @@ foreach(entry
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}" AND NOT TARGET ${tgt})
       add_executable(${tgt} ${src})
       target_link_libraries(${tgt} PRIVATE binaryrpc_core)
-      if(WIN32)
-          target_link_libraries(${tgt} PRIVATE binaryrpc_core glog::glog)
-      endif()
   endif()
 endforeach()
