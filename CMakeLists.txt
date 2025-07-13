@@ -31,6 +31,7 @@ if(WIN32)
     find_package(jwt-cpp CONFIG  REQUIRED)
     find_package(folly CONFIG REQUIRED)
     find_package(fmt CONFIG REQUIRED)
+    find_package(msgpack-cxx CONFIG REQUIRED)
 else() # UNIX/Linux
     add_compile_options(-finput-charset=UTF-8 -fexec-charset=UTF-8)
     
@@ -40,6 +41,7 @@ else() # UNIX/Linux
     find_package(Threads REQUIRED)
     set(JWT_CPP_INCLUDE_DIR /usr/include/jwt-cpp)
     find_package(folly CONFIG REQUIRED)
+    find_package(msgpack-cxx CONFIG REQUIRED)
 endif()
 
 # ----------------------
@@ -95,6 +97,7 @@ if(WIN32)
         Folly::folly Folly::folly_deps Folly::follybenchmark Folly::folly_test_util
 
         fmt::fmt
+        msgpack-cxx
     )
 else()
     target_link_libraries(binaryrpc_core PUBLIC
@@ -105,6 +108,7 @@ else()
         # nlohmann_json::nlohmann_json is only needed if ENABLE_JSON_EXAMPLES is ON
         $<$<BOOL:${ENABLE_JSON_EXAMPLES}>:nlohmann_json::nlohmann_json>
         Folly::folly Folly::folly_deps Folly::follybenchmark Folly::folly_test_util
+        msgpack-cxx
     )
 endif()
 
