@@ -57,7 +57,7 @@ This project is a modern C++ RPC framework with several external dependencies. T
 > **Note:**
 > Starting from version 0.1.0, BinaryRPC expects you to set the `VCPKG_ROOT` environment variable to your vcpkg installation path **on Windows**. This makes the build process portable and avoids hardcoding paths. If you do not set this variable on Windows, CMake will stop with an error.
 >
-> **Linux/macOS users:** You don't need to set VCPKG_ROOT as the project uses system package managers on these platforms.
+> **Linux/macOS users:** You can use your system package manager (like `apt` or `pacman`), but using `vcpkg` is recommended for better consistency, especially on newer distributions like Ubuntu 24.04 where some packages may not be available in the default repositories.
 >
 > **How to set VCPKG_ROOT (Windows only):**
 > - **Windows (PowerShell):**
@@ -71,34 +71,34 @@ This project is a modern C++ RPC framework with several external dependencies. T
 >
 > Replace `/path/to/vcpkg` with the actual path where you cloned vcpkg.
 
-#### Step 2.1: Install Dependencies with vcpkg
+#### Step 2.1: Install Dependencies
 
-First, ensure you have [vcpkg](https://github.com/microsoft/vcpkg) installed and bootstrapped. Then, install all required dependencies:
+You can install dependencies using **vcpkg** (recommended for all platforms) or your system's package manager (Linux-only alternative).
 
-# Install all dependencies for binaryrpc
+### Option 1: Install with vcpkg (Recommended)
 
-## Core Dependencies
+First, ensure you have [vcpkg](https://github.com/microsoft/vcpkg) installed and bootstrapped. Then, run the following command to install all required dependencies. This command works for Windows, Linux, and macOS.
 
-These are required for building and running the core framework:
-
-### Windows (vcpkg)
 ```bash
-./vcpkg install unofficial-uwebsockets zlib folly glog gflags fmt double-conversion --triplet x64-windows
+./vcpkg install uwebsockets zlib folly glog gflags fmt double-conversion
 ```
 
-### Linux (Arch/pacman)
+### Option 2: Install with System Package Manager (Linux)
+
+#### Linux (Arch/pacman)
 ```bash
 sudo pacman -S uwebsockets zlib folly glog gflags fmt double-conversion openssl usockets
 ```
 
-### Linux (Ubuntu/Debian)
+#### Linux (Ubuntu/Debian)
+These packages might not be available on newer versions like Ubuntu 24.04. If you encounter errors, please use `vcpkg`.
 ```bash
 sudo apt update
 sudo apt install libuwebsockets-dev zlib1g-dev libfolly-dev libgoogle-glog-dev libgflags-dev libfmt-dev libdouble-conversion-dev libssl-dev libusockets-dev
 ```
 
 > **Note on folly and glog:**
-> - On some distributions, the package names may differ or the packages may not be available in the default repositories. In that case, you may need to build [folly](https://github.com/facebook/folly) and [glog](https://github.com/google/glog) from source. Please refer to their official documentation for build instructions.
+> - On some distributions, the package names may differ or the packages may not be available in the default repositories. In that case, you may need to build [folly](https://github.com/facebook/folly) and [glog](https://github.com/google/glog) from source or use vcpkg.
 > - **Folly and glog can sometimes be incompatible on certain Linux systems.** If you encounter build errors related to glog, you can try disabling glog or ensure you are using compatible versions. On Linux, BinaryRPC disables glog logging by default if there is a known incompatibility.
 > - If you see an error like `folly library not found!`, make sure folly is installed and the library path is visible to the linker (e.g., `/usr/lib` or `/usr/local/lib`).
 > - If you see an error like `glog library not found!`, make sure glog is installed and the library path is visible to the linker.
@@ -130,8 +130,8 @@ cmake -E make_directory build
 cd build
 
 # 3. Configure the project with the vcpkg toolchain
-#    Use the VCPKG_ROOT environment variable for portability
-cmake .. -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake
+#    This step is required if you used vcpkg for dependencies.
+cmake .. -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
 
 # 4. Build the library
 cmake --build . --config Release
@@ -152,7 +152,11 @@ cd binaryrpc
 cmake -E make_directory build
 cd build
 
-# 3. Configure the project (no toolchain file needed on Linux/macOS)
+# 3. Configure the project
+#    If using vcpkg, add the toolchain file:
+#    cmake .. -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
+#
+#    If using system libraries:
 cmake ..
 
 # 4. Build the library

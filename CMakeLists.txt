@@ -27,7 +27,7 @@ if(WIN32)
             CACHE STRING "Vcpkg toolchain file")
     endif()
     include_directories("${VCPKG_ROOT}/installed/x64-windows/include")
-    find_package(unofficial-uwebsockets CONFIG REQUIRED)
+    find_package(uwebsockets CONFIG REQUIRED)
     find_package(ZLIB            REQUIRED)
     find_package(Threads         REQUIRED)
     find_package(jwt-cpp CONFIG  REQUIRED)
@@ -39,14 +39,19 @@ if(WIN32)
     find_package(fmt CONFIG REQUIRED)
 else() # UNIX/Linux
     add_compile_options(-finput-charset=UTF-8 -fexec-charset=UTF-8)
-    find_path(UWEBSOCKETS_INCLUDE_DIR uWebSockets/App.h PATHS /usr/include /usr/local/include)
-    find_library(USOCKETS_LIBRARY usockets PATHS /usr/lib /usr/local/lib)
-    if(NOT UWEBSOCKETS_INCLUDE_DIR)
-        message(FATAL_ERROR "uWebSockets include directory not found!")
+    
+    # If not using vcpkg on Linux, find packages manually
+    if(NOT CMAKE_TOOLCHAIN_FILE)
+        find_path(UWEBSOCKETS_INCLUDE_DIR uWebSockets/App.h PATHS /usr/include /usr/local/include)
+        find_library(USOCKETS_LIBRARY usockets PATHS /usr/lib /usr/local/lib)
+        if(NOT UWEBSOCKETS_INCLUDE_DIR)
+            message(FATAL_ERROR "uWebSockets include directory not found!")
+        endif()
+        if(NOT USOCKETS_LIBRARY)
+            message(FATAL_ERROR "uSockets library not found!")
+        endif()
     endif()
-    if(NOT USOCKETS_LIBRARY)
-        message(FATAL_ERROR "uSockets library not found!")
-    endif()
+
     find_package(OpenSSL REQUIRED)
     find_package(ZLIB REQUIRED)
     find_package(Threads REQUIRED)
@@ -123,7 +128,7 @@ endif()
 
 if(WIN32)
     target_link_libraries(binaryrpc_core PUBLIC
-        unofficial::uwebsockets::uwebsockets
+        uwebsockets::uwebsockets
         ZLIB::ZLIB
         Threads::Threads
         # jwt-cpp::jwt-cpp is only needed if ENABLE_JWT is ON
@@ -136,7 +141,8 @@ if(WIN32)
     )
 else()
     target_link_libraries(binaryrpc_core PUBLIC
-        ${USOCKETS_LIBRARY}
+        $<$<TARGET_EXISTS:uwebsockets::uwebsockets>:uwebsockets::uwebsockets>
+        $<$<NOT:$<TARGET_EXISTS:uwebsockets::uwebsockets>>:${USOCKETS_LIBRARY}>
         pthread
         ZLIB::ZLIB
         Threads::Threads
