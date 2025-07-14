@@ -1,4 +1,5 @@
 ﻿#include "binaryrpc/core/session/session_manager.hpp"
+#include "../util/conn_state.hpp"
 #include <iomanip>
 #include <sstream>
 

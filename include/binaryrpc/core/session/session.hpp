@@ -15,7 +15,6 @@
 #include <memory>
 #include <cstdint>
 #include "binaryrpc/core/auth/ClientIdentity.hpp"
-#include "binaryrpc/core/util/conn_state.hpp"
 #include "binaryrpc/core/qos/duplicate_filter.hpp"
 
 // If you don't want to include uWebSockets directly, use forward declaration:
@@ -23,6 +22,8 @@ namespace uWS { template<bool, bool, typename> class WebSocket; }
 struct PerSocketData;
 
 namespace binaryrpc {
+
+class ConnState;
 
     /**
      * @enum ConnectionState

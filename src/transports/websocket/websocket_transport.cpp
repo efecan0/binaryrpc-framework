@@ -54,9 +54,60 @@ namespace {
 #include <folly/SharedMutex.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/hash/Hash.h>
+#include "../../core/util/conn_state.hpp"
+
 using namespace binaryrpc;
 
 namespace binaryrpc {
+
+    PerSocketData::PerSocketData(): state{std::make_shared<ConnState>()}, alive{true}, loop{nullptr}
+    {}
+
+    PerSocketData::PerSocketData(const PerSocketData& o)
+    : session(o.session)
+    , state(o.state)
+        , lastActive(o.lastActive)
+    , alive(true)
+    , loop(nullptr)
+    , sendQueue()
+    {}
+
+    PerSocketData& PerSocketData::operator=(const PerSocketData& o) {
+        if (this != &o) {
+            session    = o.session;
+            state      = o.state;
+            lastActive = o.lastActive;
+        alive.store(true, std::memory_order_relaxed);
+            loop       = nullptr;
+        sendQueue.clear();
+        }
+        return *this;
+    }
+
+    PerSocketData::PerSocketData(PerSocketData&& other) noexcept
+        : session(std::move(other.session))
+        , state(std::move(other.state))
+        , lastActive(other.lastActive)
+        , alive(other.alive.load(std::memory_order_relaxed))
+        , loop(other.loop)
+        , sendQueue(std::move(other.sendQueue))
+    {
+        other.loop = nullptr;
+    }
+
+    PerSocketData& PerSocketData::operator=(PerSocketData&& other) noexcept {
+        if (this != &other) {
+            session = std::move(other.session);
+            state = std::move(other.state);
+            lastActive = other.lastActive;
+            alive.store(other.alive.load(std::memory_order_relaxed), std::memory_order_relaxed);
+            loop = other.loop;
+            sendQueue = std::move(other.sendQueue);
+            other.loop = nullptr;
+        }
+        return *this;
+    }
+
 
     /**
      * @brief Converts a FrameType enum value to its string representation for debugging/logging.
