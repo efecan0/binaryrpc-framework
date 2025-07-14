@@ -22,11 +22,6 @@
 #include "binaryrpc/core/util/random.hpp"
 #include "binaryrpc/core/util/time.hpp"
 #include <uwebsockets/App.h>
-#include <folly/Synchronized.h>
-#include <folly/container/F14Map.h>
-#include <folly/SharedMutex.h>
-#include <folly/synchronization/Baton.h>
-#include <folly/hash/Hash.h>
 
 
 #include <unordered_map>
