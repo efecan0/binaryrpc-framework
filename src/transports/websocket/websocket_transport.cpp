@@ -49,6 +49,11 @@ namespace {
 #include "../../../include/binaryrpc/core/interfaces/IBackoffStrategy.hpp"
 #include "binaryrpc/core/strategies/exponential_backoff.hpp"
 #include "binaryrpc/core/util/DefaultInspector.hpp"
+#include <folly/Synchronized.h>
+#include <folly/container/F14Map.h>
+#include <folly/SharedMutex.h>
+#include <folly/synchronization/Baton.h>
+#include <folly/hash/Hash.h>
 using namespace binaryrpc;
 
 namespace binaryrpc {
