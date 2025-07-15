@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <deque>
 #include <string_view>
-#include "binaryrpc/core/util/conn_state.hpp"
 #include "binaryrpc/core/session/session.hpp"
 #include "binaryrpc/core/interfaces/IHandshakeInspector.hpp"
 #include "binaryrpc/core/util/hex.hpp"
@@ -71,19 +70,19 @@ namespace binaryrpc {
     /**
      * @brief Shared pointer to the connection state (QoS, pending messages, etc.).
      */
-        std::shared_ptr<ConnState> state{std::make_shared<ConnState>()};
+        std::shared_ptr<ConnState> state;
     /**
      * @brief Last activity timestamp for idle timeout management.
      */
-        std::chrono::steady_clock::time_point lastActive{};
+        std::chrono::steady_clock::time_point lastActive;
     /**
      * @brief Indicates if the connection is alive.
      */
-    std::atomic_bool          alive{true};
+    std::atomic_bool          alive;
     /**
      * @brief Pointer to the uWebSockets event loop for this connection.
      */
-        uWS::Loop*                 loop{nullptr};
+        uWS::Loop*                 loop;
     /**
      * @brief Outgoing message queue for this connection.
      */
@@ -92,70 +91,33 @@ namespace binaryrpc {
     /**
      * @brief Default constructor.
      */
-        PerSocketData() = default;
+        PerSocketData();
 
     /**
      * @brief Copy constructor.
      * @param o The PerSocketData to copy from.
      */
-        PerSocketData(const PerSocketData& o)
-        : session(o.session)
-        , state(o.state)
-            , lastActive(o.lastActive)
-        , alive(true)
-        , loop(nullptr)
-        , sendQueue()
-    {}
+        PerSocketData(const PerSocketData& o);
 
     /**
      * @brief Copy assignment operator.
      * @param o The PerSocketData to copy from.
      * @return Reference to this object.
      */
-        PerSocketData& operator=(const PerSocketData& o) {
-            if (this != &o) {
-                session    = o.session;
-                state      = o.state;
-                lastActive = o.lastActive;
-            alive.store(true, std::memory_order_relaxed);
-                loop       = nullptr;
-            sendQueue.clear();
-            }
-            return *this;
-        }
+        PerSocketData& operator=(const PerSocketData& o);
 
     /**
      * @brief Move constructor.
      * @param other The PerSocketData to move from.
      */
-        PerSocketData(PerSocketData&& other) noexcept
-            : session(std::move(other.session))
-            , state(std::move(other.state))
-            , lastActive(other.lastActive)
-            , alive(other.alive.load(std::memory_order_relaxed))
-            , loop(other.loop)
-            , sendQueue(std::move(other.sendQueue))
-        {
-            other.loop = nullptr;
-        }
+        PerSocketData(PerSocketData&& other) noexcept;
 
     /**
      * @brief Move assignment operator.
      * @param other The PerSocketData to move from.
      * @return Reference to this object.
      */
-        PerSocketData& operator=(PerSocketData&& other) noexcept {
-            if (this != &other) {
-                session = std::move(other.session);
-                state = std::move(other.state);
-                lastActive = other.lastActive;
-                alive.store(other.alive.load(std::memory_order_relaxed), std::memory_order_relaxed);
-                loop = other.loop;
-                sendQueue = std::move(other.sendQueue);
-                other.loop = nullptr;
-            }
-            return *this;
-        }
+        PerSocketData& operator=(PerSocketData&& other) noexcept;
     };
 
 /**

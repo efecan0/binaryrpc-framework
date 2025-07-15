@@ -2,6 +2,7 @@
 #include "../include/binaryrpc/transports/websocket/websocket_transport.hpp"
 #include "binaryrpc/core/strategies/linear_backoff.hpp"
 #include "binaryrpc/core/strategies/exponential_backoff.hpp"
+#include "../src/core/util/conn_state.hpp"
 #include <thread>
 #include <binaryrpc/core/util/byteorder.hpp>
 
