@@ -50,15 +50,6 @@ This project is a modern C++ RPC framework with several external dependencies. T
 
 ### 2. Building and Installing the Library
 
-> **Note:**
-> Starting from version 0.1.0, BinaryRPC expects you to set the `VCPKG_ROOT` environment variable to your vcpkg installation path. This makes the build process portable and avoids hardcoding paths. If you do not set this variable on, CMake will stop with an error.
->
->
-> **How to set VCPKG_ROOT:**
-> It is recommended for follow the [official instruction](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started)
-
-#### Step 2.1: Configure and Build BinaryRPC
-
 This process will compile the library.
 
 ```bash
@@ -66,10 +57,15 @@ This process will compile the library.
 git clone https://github.com/efecan0/binaryrpc-framework.git --recurse-submodules
 cd binaryrpc
 
+# 2. Configure the build
 cmake --preset release
 
-# 4. Build the library
+# 3. Build the library
 cmake --build build --config Release
+
+# 4. Install the library
+#    You can specify a prefix directory by appending --prefix=INSERT_YOUR_DIRECTORY
+cmake --install build --config Release
 ```
 
 ### 3. Using BinaryRPC in Your Own Project
