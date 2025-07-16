@@ -78,9 +78,9 @@ If you want to use the included presets you can just follow a standard CMake bui
 cmake --preset development
 ```
 
-#### Step 2.2: Configure, Build, and Install BinaryRPC
+#### Step 2.2: Configure and Build BinaryRPC
 
-This process will compile the library and install its headers and binaries into a standard system location, making it available for other projects.
+This process will compile the library.
 
 ```bash
 # 1. Clone the repository
@@ -91,14 +91,7 @@ cmake --preset release
 
 # 4. Build the library
 cmake --build build --config Release
-
-# 5. Install the library
-#    On Linux/macOS, you may need to run this with sudo
-#    You can set an install prefix by adding --prefex=${INSTALL_LOCATION}
-cmake --install build --config Release
 ```
-
-After this step, BinaryRPC is installed on your system and can be found by any other CMake project using `find_package(binaryrpc)`.
 
 ### 3. Building and Running the Examples (Optional)
 
