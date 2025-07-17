@@ -27,10 +27,10 @@ find_package(OpenSSL QUIET) # Optional, mainly for non-windows
 # ----------------------
 file(GLOB_RECURSE BINARYRPC_CORE_SOURCES CONFIGURE_DEPENDS src/*.cpp src/**/*.cpp)
 set(_EXTRA_CANDIDATES
-    src/core/session/generic_index.cpp
-    src/plugins/room_plugin.cpp
-    src/core/protocol/msgpack_protocol.cpp
-    src/plugins/reliable_plugin.cpp)
+        src/core/session/generic_index.cpp
+        src/plugins/room_plugin.cpp
+        src/core/protocol/msgpack_protocol.cpp
+        src/plugins/reliable_plugin.cpp)
 foreach(_f IN LISTS _EXTRA_CANDIDATES)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_f}")
         list(APPEND BINARYRPC_CORE_SOURCES ${_f})
@@ -85,18 +85,18 @@ endif()
 # Integration/regression test executables
 # ----------------------
 foreach(entry
-    binaryrpc_middleware_integration_test:test_server/middleware_test.cpp
-    binaryrpc_session_integration_test:test_server/session_test.cpp
-    binaryrpc_advanced_general_integration_test:test_server/advanced_general_server.cpp
-    binaryrpc_error_propagation_integration_test:test_server/error_propagation_test.cpp
-    binaryrpc_qos1_integration_test:test_server/qos1_test.cpp
-    binaryrpc_qos2_integration_test:test_server/qos2_test.cpp
-    binaryrpc_main_test:test_server/main.cpp)
-  string(REPLACE ":" ";" pair ${entry})
-  list(GET pair 0 tgt)
-  list(GET pair 1 src)
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}" AND NOT TARGET ${tgt})
-      add_executable(${tgt} ${src})
-      target_link_libraries(${tgt} PRIVATE binaryrpc_core)
-  endif()
+        binaryrpc_middleware_integration_test:test_server/middleware_test.cpp
+        binaryrpc_session_integration_test:test_server/session_test.cpp
+        binaryrpc_advanced_general_integration_test:test_server/advanced_general_server.cpp
+        binaryrpc_error_propagation_integration_test:test_server/error_propagation_test.cpp
+        binaryrpc_qos1_integration_test:test_server/qos1_test.cpp
+        binaryrpc_qos2_integration_test:test_server/qos2_test.cpp
+        binaryrpc_main_test:test_server/main.cpp)
+    string(REPLACE ":" ";" pair ${entry})
+    list(GET pair 0 tgt)
+    list(GET pair 1 src)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}" AND NOT TARGET ${tgt})
+        add_executable(${tgt} ${src})
+        target_link_libraries(${tgt} PRIVATE binaryrpc_core)
+    endif()
 endforeach()

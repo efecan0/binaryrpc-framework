@@ -9,16 +9,10 @@
  * @date 2025
  */
 #pragma once
-#include "interfaces/itransport.hpp"
-#include "interfaces/iplugin.hpp"
-#include "interfaces/iprotocol.hpp"
-#include "middleware/middleware_chain.hpp"
-#include "rpc/rpc_manager.hpp"
-#include "session/session_manager.hpp"
-#include "util/logger.hpp"
-#include "protocol/simple_text_protocol.hpp"
+#include "binaryrpc/core/types.hpp"
 #include <vector>
 #include <string>
+#include <memory>
 
 namespace folly { // Forward declaration
     class CPUThreadPoolExecutor;
@@ -26,7 +20,11 @@ namespace folly { // Forward declaration
 
 namespace binaryrpc {
 
+    // Forward declarations for public interfaces and types
     class ITransport;
+    class IPlugin;
+    class IProtocol;
+    class SessionManager; // This will be opaque
 
     /**
      * @class App
@@ -41,19 +39,12 @@ namespace binaryrpc {
          * @brief Get the singleton instance.
          * @return Reference to the single App instance
          */
-        static App& getInstance() {
-            static App instance;
-            return instance;
-        }
+        static App& getInstance();
 
         // Delete copy and assignment operators
         App(const App&) = delete;
         App& operator=(const App&) = delete;
 
-        /**
-         * @brief Constructor for the App class.
-         */
-        App();
         /**
          * @brief Destructor for the App class.
          */
@@ -128,20 +119,10 @@ namespace binaryrpc {
         IProtocol* getProtocol() const;
 
     private:
-        /**
-         * @brief Process incoming data and trigger the corresponding RPC/method/middleware chain.
-         * @param proto Protocol in use
-         * @param data Incoming raw data
-         * @param session Associated session
-         * @param connection Connection pointer
-         */
-        void onDataReceived(const std::shared_ptr<IProtocol>& proto,const std::vector<uint8_t>& data, std::shared_ptr<Session> session, void* connection);
-        MiddlewareChain middlewareChain_; ///< Middleware chain
-        RPCManager rpcManager_;           ///< RPC manager
-        SessionManager sessionManager_;   ///< Session manager
-        std::unique_ptr<ITransport> transport_; ///< Active transport
-        std::vector<std::unique_ptr<IPlugin>> plugins_; ///< Plugins
-        std::shared_ptr<IProtocol> protocol_; ///< Active protocol
-        std::unique_ptr<folly::CPUThreadPoolExecutor> thread_pool_; ///< Thread pool
+        App(); // Private constructor for singleton
+
+        // PIMPL idiom
+        struct Impl;
+        std::unique_ptr<Impl> pImpl_;
     };
 }

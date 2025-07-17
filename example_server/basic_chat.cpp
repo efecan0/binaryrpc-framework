@@ -1,11 +1,17 @@
-#include "binaryrpc/core/app.hpp"
-#include "../include/binaryrpc/transports/websocket/websocket_transport.hpp"
-#include "binaryrpc/core/util/qos.hpp"
+// Core API - everything you always need
+#include "binaryrpc/binaryrpc.hpp"
+
+// Optional includes for specific implementations
+#include "binaryrpc/transports/websocket/websocket_transport.hpp"
 #include "binaryrpc/core/strategies/linear_backoff.hpp"
-#include "binaryrpc/core/framework_api.hpp"
 #include "binaryrpc/plugins/room_plugin.hpp"
-#include "binaryrpc/core/util/logger.hpp"
 #include "binaryrpc/core/protocol/msgpack_protocol.hpp"
+#include "binaryrpc/middlewares/rate_limiter.hpp"
+#include "binaryrpc/core/util/DefaultInspector.hpp"
+#include "binaryrpc/core/util/logger.hpp" // Now public
+#include "binaryrpc/core/util/qos.hpp"    // Now public
+
+// Other standard libraries
 #include <openssl/sha.h>
 #include <chrono>
 #include <format>
@@ -13,7 +19,6 @@
 #include <iomanip>
 #include <sstream>
 #include <iostream>
-#include "binaryrpc/middlewares/rate_limiter.hpp"
 #include "utils/parser.hpp"
 
 using namespace binaryrpc;

@@ -1,4 +1,4 @@
-﻿#include "binaryrpc/core/session/generic_index.hpp"
+﻿#include "internal/core/session/generic_index.hpp"
 
 namespace binaryrpc {
 

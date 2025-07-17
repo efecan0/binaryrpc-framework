@@ -15,9 +15,10 @@
 #include <string>
 #include <optional>
 
-#include "binaryrpc/core/session/session.hpp"
-#include "binaryrpc/core/session/session_manager.hpp"
-#include "binaryrpc/core/interfaces/itransport.hpp"
+// Forward declarations
+class Session;
+class SessionManager;
+class ITransport;
 
 namespace binaryrpc {
 
@@ -35,6 +36,11 @@ namespace binaryrpc {
          * @param tr Pointer to the ITransport instance
          */
         FrameworkAPI(SessionManager* sm, ITransport* tr);
+
+        /**
+         * @brief Destructor for the FrameworkAPI class.
+         */
+        ~FrameworkAPI();
 
         /**
          * @brief Send data to a session by session ID.
@@ -101,8 +107,9 @@ namespace binaryrpc {
                 const std::string& value) const;
 
     private:
-        SessionManager* sm_; ///< Pointer to the SessionManager
-        ITransport* tr_;     ///< Pointer to the ITransport instance
+        // PIMPL idiom
+        struct Impl;
+        std::unique_ptr<Impl> pImpl_;
     };
 
 }

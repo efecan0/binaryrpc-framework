@@ -1,5 +1,10 @@
-﻿#include "binaryrpc/core/session/session_manager.hpp"
-#include "../util/conn_state.hpp"
+﻿#include "internal/core/session/session_manager.hpp"
+#include "internal/core/util/conn_state.hpp"
+#include "binaryrpc/core/session/session.hpp"
+#include "binaryrpc/core/auth/ClientIdentity.hpp"
+#include "binaryrpc/core/util/logger.hpp" // Corrected path
+#include "internal/core/util/random.hpp"
+#include "internal/core/util/time.hpp"
 #include <iomanip>
 #include <sstream>
 

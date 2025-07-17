@@ -7,8 +7,32 @@
  * for high-performance WebSocket communication and supports advanced features such as offline message queuing,
  * duplicate detection, and pluggable handshake inspection.
  */
-#include "../../../include/binaryrpc/transports/websocket/websocket_transport.hpp"
+#include "binaryrpc/transports/websocket/websocket_transport.hpp"
 
+// Project-specific internal and public headers that were moved from the header
+#include "internal/core/session/session_manager.hpp"
+#include "internal/core/util/conn_state.hpp" // conn_state.hpp is internal now
+#include "binaryrpc/core/util/qos.hpp"
+#include "binaryrpc/core/interfaces/IHandshakeInspector.hpp"
+#include "binaryrpc/core/strategies/exponential_backoff.hpp"
+#include "binaryrpc/core/util/DefaultInspector.hpp"
+#include "binaryrpc/core/util/logger.hpp"
+
+// Third-party and standard library headers
+#include <uwebsockets/App.h>
+#include <folly/Synchronized.h>
+#include <folly/SharedMutex.h>
+#include <thread>
+#include <atomic>
+#include <set>
+#include <vector>
+#include <string>
+#include <memory>
+#include <functional>
+#include <cstring>
+#include <chrono>
+#include <deque>
+#include <ranges>
 
 #ifdef _WIN32
     #include <intrin.h>
@@ -45,52 +69,65 @@ namespace {
     }
 }
 
-#include <binaryrpc/core/util/logger.hpp>
-#include "../../../include/binaryrpc/core/interfaces/IBackoffStrategy.hpp"
-#include "binaryrpc/core/strategies/exponential_backoff.hpp"
-#include "binaryrpc/core/util/DefaultInspector.hpp"
 #include <folly/Synchronized.h>
 #include <folly/container/F14Map.h>
 #include <folly/SharedMutex.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/hash/Hash.h>
-#include "../../core/util/conn_state.hpp"
 
 using namespace binaryrpc;
 
 namespace binaryrpc {
 
-    PerSocketData::PerSocketData(): state{std::make_shared<ConnState>()}, alive{true}, loop{nullptr}
-    {}
+    // These definitions are internal to the WebSocketTransport implementation
+    // and are moved here from the public header.
+    enum FrameType : uint8_t {
+        FRAME_DATA      = 0x00,
+        FRAME_ACK       = 0x01,
+        FRAME_PREPARE   = 0x02,
+        FRAME_PREPARE_ACK = 0x03,
+        FRAME_COMMIT    = 0x04,
+        FRAME_COMPLETE  = 0x05
+    };
+
+    struct PerSocketData {
+        std::shared_ptr<Session>   session;
+        std::shared_ptr<ConnState> state;
+        std::chrono::steady_clock::time_point lastActive;
+        std::atomic_bool          alive;
+        uWS::Loop*                 loop;
+        std::deque<std::vector<uint8_t>> sendQueue;
+
+        PerSocketData();
+        PerSocketData(const PerSocketData& o);
+        PerSocketData& operator=(const PerSocketData& o);
+        PerSocketData(PerSocketData&& other) noexcept;
+        PerSocketData& operator=(PerSocketData&& other) noexcept;
+    };
+    
+    // Implementations for PerSocketData's methods
+    PerSocketData::PerSocketData(): state{std::make_shared<ConnState>()}, alive{true}, loop{nullptr} {}
 
     PerSocketData::PerSocketData(const PerSocketData& o)
-    : session(o.session)
-    , state(o.state)
-        , lastActive(o.lastActive)
-    , alive(true)
-    , loop(nullptr)
-    , sendQueue()
-    {}
+        : session(o.session), state(o.state), lastActive(o.lastActive), 
+          alive(true), loop(nullptr), sendQueue() {}
 
     PerSocketData& PerSocketData::operator=(const PerSocketData& o) {
         if (this != &o) {
-            session    = o.session;
-            state      = o.state;
+            session = o.session;
+            state = o.state;
             lastActive = o.lastActive;
-        alive.store(true, std::memory_order_relaxed);
-            loop       = nullptr;
-        sendQueue.clear();
+            alive.store(true, std::memory_order_relaxed);
+            loop = nullptr;
+            sendQueue.clear();
         }
         return *this;
     }
 
     PerSocketData::PerSocketData(PerSocketData&& other) noexcept
-        : session(std::move(other.session))
-        , state(std::move(other.state))
-        , lastActive(other.lastActive)
-        , alive(other.alive.load(std::memory_order_relaxed))
-        , loop(other.loop)
-        , sendQueue(std::move(other.sendQueue))
+        : session(std::move(other.session)), state(std::move(other.state)), 
+          lastActive(other.lastActive), alive(other.alive.load(std::memory_order_relaxed)),
+          loop(other.loop), sendQueue(std::move(other.sendQueue))
     {
         other.loop = nullptr;
     }
@@ -107,7 +144,6 @@ namespace binaryrpc {
         }
         return *this;
     }
-
 
     /**
      * @brief Converts a FrameType enum value to its string representation for debugging/logging.

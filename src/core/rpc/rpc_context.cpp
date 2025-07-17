@@ -1,4 +1,6 @@
 ﻿#include "binaryrpc/core/rpc/rpc_context.hpp"
+#include "binaryrpc/core/interfaces/itransport.hpp"
+#include "binaryrpc/core/session/session.hpp"
 #include <iostream>
 
 namespace binaryrpc {

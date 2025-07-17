@@ -9,24 +9,25 @@
  * @date 2025
  */
 #pragma once
-#include "session.hpp"
+#include "binaryrpc/core/session/session.hpp"
 #include "binaryrpc/core/auth/ClientIdentity.hpp"
 #include <unordered_map>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <atomic>
-#include <thread>  // std::jthread için
-#include "binaryrpc/core/session/generic_index.hpp"
+#include "internal/core/session/generic_index.hpp"
 #include "binaryrpc/core/util/logger.hpp"
 #include <format>
 #include <vector>
-#include "binaryrpc/core/util/random.hpp"
-#include "binaryrpc/core/util/time.hpp"
+#include "internal/core/util/random.hpp"
+#include "internal/core/util/time.hpp"
 #include <any>          // Generic state değerleri için
 #include <cstring>
 #include <queue>
 #include <functional>
+#include <optional> // For std::optional
+#include <thread>   // For std::jthread
 
 namespace binaryrpc {
     /**

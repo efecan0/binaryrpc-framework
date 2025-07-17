@@ -11,17 +11,11 @@
 #pragma once
 #include <vector>
 #include <unordered_map>
-#include <functional>
 #include "binaryrpc/core/session/session.hpp"
 #include "binaryrpc/core/util/logger.hpp"
+#include "binaryrpc/core/types.hpp"
 
 namespace binaryrpc {
-
-    /**
-     * @typedef NextFunc
-     * @brief Function type for proceeding to the next middleware in the chain.
-     */
-    using NextFunc = std::function<void()>;
 
     /**
      * @typedef Middleware
