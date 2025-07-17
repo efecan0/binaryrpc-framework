@@ -1,4 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.16)
+set(VCPKG_OVERLAY_PORTS ${CMAKE_SOURCE_DIR}/vcpkg-overlays)
+
 project(binaryrpc LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
