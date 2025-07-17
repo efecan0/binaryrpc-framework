@@ -23,7 +23,7 @@ struct PerSocketData;
 
 namespace binaryrpc {
 
-class ConnState;
+struct ConnState;
 
     /**
      * @enum ConnectionState

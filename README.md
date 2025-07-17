@@ -21,9 +21,6 @@ In the future, I aim to evolve this architecture into an actor-mailbox model. Ho
 
 > It is designed for latency-sensitive applications such as multiplayer games, financial tick streams, and IoT dashboards, delivering ultra-low latency and minimal overhead. With a modular architecture and efficient networking, BinaryRPC remains lightweight both in resource usage and developer experience.
 
-
-
-
  
 ---
 
@@ -49,68 +46,29 @@ This project is a modern C++ RPC framework with several external dependencies. T
 
 - **CMake**: Version 3.16 or higher.
 - **C++ Compiler**: A compiler with C++20 support (e.g., MSVC, GCC, Clang).
-- **vcpkg**: A C++ package manager from Microsoft, used for dependencies.
 - **Git**: For cloning the repository.
 
 ### 2. Building and Installing the Library
-
-> **Note:**
-> Starting from version 0.1.0, BinaryRPC expects you to set the `VCPKG_ROOT` environment variable to your vcpkg installation path. This makes the build process portable and avoids hardcoding paths. If you do not set this variable on, CMake will stop with an error.
->
->
-> **How to set VCPKG_ROOT:**
-> It is recommended for follow the [official instruction](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started)
-
-#### Step 2.1: Install Dependencies
-
-You can install dependencies using **vcpkg**.
-
-### Install with vcpkg
-
-First, ensure you have [vcpkg](https://github.com/microsoft/vcpkg) installed and bootstrapped. Then, run the following command to install all required dependencies. This command works for Windows, Linux, and macOS.
-
-```bash
-vcpkg install
-```
-
-If you want to use the included presets you can just follow a standard CMake build process and all dependencies will be installed automatically
-```bash
-cmake --preset development
-```
-
-#### Step 2.2: Configure and Build BinaryRPC
 
 This process will compile the library.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/efecan0/binaryrpc-framework.git
+git clone https://github.com/efecan0/binaryrpc-framework.git --recurse-submodules
 cd binaryrpc
 
+# 2. Configure the build
 cmake --preset release
 
-# 4. Build the library
+# 3. Build the library
 cmake --build build --config Release
+
+# 4. Install the library
+#    You can specify a prefix directory by appending --prefix=INSERT_YOUR_DIRECTORY
+cmake --install build --config Release
 ```
 
-### 3. Building and Running the Examples (Optional)
-
-The `examples` directory contains a separate project that demonstrates how to use the installed library.
-
-```bash
-# From the root of the binaryrpc repository, navigate to the examples
-cd examples
-
-cmake -S . -B build
-
-# Build the examples
-cmake --build . --config Release
-
-# Run the basic server example
-./basic_server
-```
-
-### 4. Using BinaryRPC in Your Own Project
+### 3. Using BinaryRPC in Your Own Project
 
 To use BinaryRPC in your own CMake project, simply add the following to your `CMakeLists.txt`:
 

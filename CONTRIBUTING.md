@@ -17,18 +17,17 @@ Thank you for your interest in contributing to BinaryRPC! This document provides
 
 - **C++20** compatible compiler (GCC 10+, Clang 12+, MSVC 2019+)
 - **CMake** 3.16 or higher
-- **vcpkg** for dependency management
 - **Python 3.8+** (for integration tests)
 
 ### Building from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/binaryrpc.git
+git clone https://github.com/your-username/binaryrpc.git --recurse-submodules
 cd binaryrpc
 
 cmake --preset development
-cmake --build .
+cmake --build build 
 
 # Run tests
 ctest --output-on-failure
