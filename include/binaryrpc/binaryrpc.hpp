@@ -22,4 +22,8 @@
 #include "binaryrpc/core/interfaces/iprotocol.hpp"
 #include "binaryrpc/core/interfaces/itransport.hpp"
 #include "binaryrpc/core/interfaces/IHandshakeInspector.hpp"
-#include "binaryrpc/core/interfaces/IBackoffStrategy.hpp" 
+#include "binaryrpc/core/interfaces/IBackoffStrategy.hpp"
+
+// Common utilities
+#include "binaryrpc/core/util/logger.hpp"
+#include "binaryrpc/core/util/qos.hpp" 

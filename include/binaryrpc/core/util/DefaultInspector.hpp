@@ -10,11 +10,12 @@
  */
 #pragma once
 
+#include <uwebsockets/App.h>
+#include "binaryrpc/core/util/logger.hpp"
 #include "binaryrpc/core/interfaces/IHandshakeInspector.hpp"
 #include "binaryrpc/core/auth/ClientIdentity.hpp"
 #include <optional>
 #include <string>
-#include <string_view>
 
 namespace binaryrpc {
 

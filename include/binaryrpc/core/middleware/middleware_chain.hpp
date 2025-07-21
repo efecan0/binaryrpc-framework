@@ -18,14 +18,6 @@
 namespace binaryrpc {
 
     /**
-     * @typedef Middleware
-     * @brief Function type for a middleware handler.
-     *
-     * Receives the session, method name, payload, and a NextFunc to call the next middleware.
-     */
-    using Middleware = std::function<void(Session&, const std::string&, std::vector<uint8_t>&, NextFunc)>;
-
-    /**
      * @class MiddlewareChain
      * @brief Composes and executes middleware for RPC calls in BinaryRPC.
      *

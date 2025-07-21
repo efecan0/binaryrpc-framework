@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <vector>
 #include <chrono>
+#include <any>
 
 // If you don't want to include uWebSockets directly, use forward declaration:
 namespace uWS { template<bool, bool, typename> class WebSocket; }
@@ -115,7 +116,9 @@ struct ConnState;
          * @param value Value to set
          */
         template<typename T>
-        void set(const std::string& key, T value);
+        void set(const std::string& key, T value) {
+            set_any(key, std::any(std::move(value)));
+        }
         /**
          * @brief Get a value from the session's data store by key.
          * @tparam T Type of the value
@@ -123,7 +126,18 @@ struct ConnState;
          * @return Value of type T if present, default-constructed T otherwise
          */
         template<typename T>
-        T get(const std::string& key) const;
+        T get(const std::string& key) const {
+            std::any val = get_any(key);
+            if (val.has_value()) {
+                try {
+                    return std::any_cast<T>(val);
+                }
+                catch (const std::bad_any_cast&) {
+                    return T{};
+                }
+            }
+            return T{};
+        }
 
         /**
          * @brief Check for duplicate QoS-1 messages using the duplicate filter.
@@ -138,6 +152,9 @@ struct ConnState;
          */
         ConnectionState connectionState = ConnectionState::OFFLINE;
     private:
+        void set_any(const std::string& key, std::any value);
+        std::any get_any(const std::string& key) const;
+
         // PIMPL idiom to hide internal implementation details
         struct Impl;
         std::unique_ptr<Impl> pImpl_;

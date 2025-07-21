@@ -1,8 +1,7 @@
 ﻿#include <catch2/catch_all.hpp>
-#include <thread>                       //  <-- eksikti
+#include <thread>
 #include <vector>
-#include <atomic>
-#include "binaryrpc/core/session/generic_index.hpp"
+#include "internal/core/session/generic_index.hpp"
 
 using namespace binaryrpc;
 static std::string sid(int i) { return "s" + std::to_string(i); }

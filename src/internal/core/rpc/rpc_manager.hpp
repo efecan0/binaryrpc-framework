@@ -18,17 +18,9 @@
 #include "binaryrpc/core/rpc/rpc_context.hpp"
 #include "binaryrpc/core/interfaces/itransport.hpp"
 #include "binaryrpc/core/util/logger.hpp"
+#include "binaryrpc/core/types.hpp"
 
 namespace binaryrpc {
-
-    /**
-     * @typedef RpcContextHandler
-     * @brief Public-facing handler type: receives request data and an RpcContext.
-     *
-     * Used by developers to implement RPC methods with access to session, transport, and reply helpers.
-     */
-    using RpcContextHandler =
-        std::function<void(const std::vector<uint8_t>&, RpcContext&)>;
 
     /**
      * @typedef InternalHandler

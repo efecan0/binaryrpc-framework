@@ -11,28 +11,16 @@
 
 // Project-specific internal and public headers that were moved from the header
 #include "internal/core/session/session_manager.hpp"
-#include "internal/core/util/conn_state.hpp" // conn_state.hpp is internal now
+#include "internal/core/util/conn_state.hpp"
 #include "binaryrpc/core/util/qos.hpp"
 #include "binaryrpc/core/interfaces/IHandshakeInspector.hpp"
 #include "binaryrpc/core/strategies/exponential_backoff.hpp"
 #include "binaryrpc/core/util/DefaultInspector.hpp"
 #include "binaryrpc/core/util/logger.hpp"
-
-// Third-party and standard library headers
+#include "binaryrpc/core/session/session.hpp"
+#include "internal/core/util/hex.hpp"
 #include <uwebsockets/App.h>
-#include <folly/Synchronized.h>
-#include <folly/SharedMutex.h>
-#include <thread>
-#include <atomic>
-#include <set>
-#include <vector>
-#include <string>
-#include <memory>
-#include <functional>
-#include <cstring>
-#include <chrono>
-#include <deque>
-#include <ranges>
+#include <utility>
 
 #ifdef _WIN32
     #include <intrin.h>
@@ -81,14 +69,6 @@ namespace binaryrpc {
 
     // These definitions are internal to the WebSocketTransport implementation
     // and are moved here from the public header.
-    enum FrameType : uint8_t {
-        FRAME_DATA      = 0x00,
-        FRAME_ACK       = 0x01,
-        FRAME_PREPARE   = 0x02,
-        FRAME_PREPARE_ACK = 0x03,
-        FRAME_COMMIT    = 0x04,
-        FRAME_COMPLETE  = 0x05
-    };
 
     struct PerSocketData {
         std::shared_ptr<Session>   session;

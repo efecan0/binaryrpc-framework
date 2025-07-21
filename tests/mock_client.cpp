@@ -1,4 +1,5 @@
 ﻿#include "mock_client.hpp"
+#include "binaryrpc/transports/websocket/websocket_transport.hpp"
 #include <cstring>
 
 using namespace binaryrpc;

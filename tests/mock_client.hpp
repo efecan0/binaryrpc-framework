@@ -4,8 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <functional>
-#include <cstring>  // memcpy iÃ§in
-#include <cstdio>   // printf iÃ§in
+#include <cstdio>
 #include "../include/binaryrpc/transports/websocket/websocket_transport.hpp"
 
 namespace binaryrpc {

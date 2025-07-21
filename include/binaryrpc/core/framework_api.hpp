@@ -15,12 +15,11 @@
 #include <string>
 #include <optional>
 
-// Forward declarations
-class Session;
-class SessionManager;
-class ITransport;
-
 namespace binaryrpc {
+    // Forward declarations
+    class Session;
+    class SessionManager;
+    class ITransport;
 
     /**
      * @class FrameworkAPI

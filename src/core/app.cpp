@@ -1,15 +1,16 @@
 ﻿#include "binaryrpc/core/app.hpp"
+#include "binaryrpc/core/types.hpp"
 #include "binaryrpc/core/interfaces/iprotocol.hpp"
 #include "binaryrpc/core/interfaces/iplugin.hpp"
 #include "binaryrpc/core/interfaces/itransport.hpp"
 #include "binaryrpc/core/protocol/simple_text_protocol.hpp"
 #include "binaryrpc/core/session/session.hpp"
 
-#include "internal/core/middleware/middleware_chain.hpp"
+#include "binaryrpc/core/middleware/middleware_chain.hpp"
 #include "internal/core/rpc/rpc_manager.hpp"
 #include "internal/core/session/session_manager.hpp"
-#include "binaryrpc/core/util/logger.hpp" // Corrected path
-#include "binaryrpc/core/util/error_types.hpp" // Corrected path
+#include "binaryrpc/core/util/logger.hpp"
+#include "binaryrpc/core/util/error_types.hpp"
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <iostream>

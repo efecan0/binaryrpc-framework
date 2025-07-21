@@ -16,7 +16,15 @@ namespace binaryrpc {
     class IHandshakeInspector;
     struct ReliableOptions;
     class Session;
-    enum FrameType : uint8_t;
+
+    enum FrameType : uint8_t {
+        FRAME_DATA      = 0x00,
+        FRAME_ACK       = 0x01,
+        FRAME_PREPARE   = 0x02,
+        FRAME_PREPARE_ACK = 0x03,
+        FRAME_COMMIT    = 0x04,
+        FRAME_COMPLETE  = 0x05
+    };
 
     /**
      * @class WebSocketTransport

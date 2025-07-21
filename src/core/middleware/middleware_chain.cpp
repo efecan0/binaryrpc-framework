@@ -1,5 +1,5 @@
-﻿#include "internal/core/middleware/middleware_chain.hpp"
-#include "binaryrpc/core/util/logger.hpp"  // Corrected path
+﻿#include "binaryrpc/core/middleware/middleware_chain.hpp"
+#include "binaryrpc/core/util/logger.hpp"
 
 namespace binaryrpc {
 

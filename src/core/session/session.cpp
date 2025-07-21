@@ -55,28 +55,17 @@ namespace binaryrpc {
     bool Session::acceptDuplicate(const std::vector<uint8_t>& rpcPayload, std::chrono::milliseconds ttl) {
         return pImpl_->dupFilter_.accept(rpcPayload, ttl);
     }
-    
-    // Explicit template instantiations for set/get
-    template void Session::set<std::string>(const std::string&, std::string);
-    template std::string Session::get<std::string>(const std::string&) const;
-    
-    template<typename T>
-    void Session::set(const std::string& key, T value) {
+
+    void Session::set_any(const std::string& key, std::any value) {
         pImpl_->data_[key] = std::move(value);
     }
 
-    template<typename T>
-    T Session::get(const std::string& key) const {
+    std::any Session::get_any(const std::string& key) const {
         auto it = pImpl_->data_.find(key);
         if (it != pImpl_->data_.end()) {
-            try {
-                return std::any_cast<T>(it->second);
-            } catch (const std::bad_any_cast&) {
-                // Return default-constructed value if cast fails
-                return T{};
-            }
+            return it->second;
         }
-        return T{};
+        return {};
     }
 
 }

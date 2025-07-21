@@ -3,7 +3,6 @@
 #include "binaryrpc/core/interfaces/itransport.hpp"
 #include "binaryrpc/core/util/logger.hpp"
 #include <iostream>
-#include <algorithm>
 
 namespace binaryrpc {
 

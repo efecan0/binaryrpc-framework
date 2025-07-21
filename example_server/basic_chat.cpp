@@ -2,14 +2,13 @@
 #include "binaryrpc/binaryrpc.hpp"
 
 // Optional includes for specific implementations
+#include <uwebsockets/App.h>
 #include "binaryrpc/transports/websocket/websocket_transport.hpp"
 #include "binaryrpc/core/strategies/linear_backoff.hpp"
 #include "binaryrpc/plugins/room_plugin.hpp"
 #include "binaryrpc/core/protocol/msgpack_protocol.hpp"
 #include "binaryrpc/middlewares/rate_limiter.hpp"
 #include "binaryrpc/core/util/DefaultInspector.hpp"
-#include "binaryrpc/core/util/logger.hpp" // Now public
-#include "binaryrpc/core/util/qos.hpp"    // Now public
 
 // Other standard libraries
 #include <openssl/sha.h>
@@ -216,8 +215,7 @@ int main() {
             error["message"] = "You are not authorized to perform this action"; 
             std::string jsonStr = error.dump();   
             std::vector<uint8_t> outgoingBytes(jsonStr.begin(), jsonStr.end());
-            auto sessionPtr = app.getSessionManager().getSession(s.id());
-            api.sendToSession(sessionPtr, app.getProtocol()->serialize("message", outgoingBytes));
+            api.sendTo(s.id(), app.getProtocol()->serialize("message", outgoingBytes));
         });
 
     app.registerRPC("say", [&](auto const& req, RpcContext& ctx) {
@@ -234,8 +232,7 @@ int main() {
         
         std::vector<std::string> roomMembers = roomPtr->getRoomMembers(*optRoom);
         for (const auto& member : roomMembers) {
-            auto sessionPtr = app.getSessionManager().getSession(member);
-            api.sendToSession(sessionPtr, app.getProtocol()->serialize("message", outgoingBytes));
+            api.sendTo(member, app.getProtocol()->serialize("message", outgoingBytes));
         }
 
         });
