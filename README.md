@@ -55,7 +55,7 @@ This process will compile the library.
 ```bash
 # 1. Clone the repository
 git clone https://github.com/efecan0/binaryrpc-framework.git --recurse-submodules
-cd binaryrpc
+cd binaryrpc-framework
 
 # 2. Configure the build
 cmake --preset release
