@@ -17,7 +17,7 @@ endif()
 find_package(unofficial-uwebsockets CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(jwt-cpp REQUIRED)
-find_package(folly REQUIRED)
+
 find_package(msgpack-cxx REQUIRED)
 find_package(nlohmann_json QUIET) # Optional dependency for examples
 find_package(OpenSSL QUIET) # Optional, mainly for non-windows
@@ -45,14 +45,13 @@ add_library(binaryrpc_core STATIC ${BINARYRPC_CORE_SOURCES})
 # PUBLIC includes are handled by vcpkg's targets. We just need to add our own project's include path.
 target_include_directories(binaryrpc_core PUBLIC include)
 target_include_directories(binaryrpc_core PRIVATE src)
+target_include_directories(binaryrpc_core PRIVATE third_party/unordered_dense/include)
 
 # Link all libraries using their modern imported targets provided by vcpkg.
 target_link_libraries(binaryrpc_core PUBLIC
     unofficial::uwebsockets::uwebsockets
     Threads::Threads
     jwt-cpp::jwt-cpp
-    Folly::folly
-    Folly::folly_deps
     msgpack-cxx
 )
 # Conditionally link optional libraries if found
@@ -63,9 +62,7 @@ if(OpenSSL_FOUND)
     target_link_libraries(binaryrpc_core PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
-# Workaround for Folly overriding the C++ standard
-# See: https://github.com/facebook/folly/issues/2295
-set_property(TARGET Folly::folly PROPERTY INTERFACE_COMPILE_OPTIONS "")
+
 
 # ----------------------
 # Tests and example applications
