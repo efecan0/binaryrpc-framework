@@ -14,9 +14,7 @@
 #include <string>
 #include <memory>
 
-namespace folly { // Forward declaration
-    class CPUThreadPoolExecutor;
-}
+
 
 namespace binaryrpc {
 

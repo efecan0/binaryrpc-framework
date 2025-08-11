@@ -12,7 +12,7 @@
 #include "binaryrpc/core/util/logger.hpp"
 #include "binaryrpc/core/util/error_types.hpp"
 
-#include <folly/executors/CPUThreadPoolExecutor.h>
+#include "binaryrpc/core/util/thread_pool.hpp"
 #include <iostream>
 #include <thread>
 
@@ -26,20 +26,18 @@ namespace binaryrpc {
         std::unique_ptr<ITransport> transport_;
         std::vector<std::unique_ptr<IPlugin>> plugins_;
         std::shared_ptr<IProtocol> protocol_;
-        std::unique_ptr<folly::CPUThreadPoolExecutor> thread_pool_;
+        std::unique_ptr<ThreadPool> thread_pool_;
 
         Impl() {
             auto thread_count = std::thread::hardware_concurrency();
             if (thread_count == 0) {
                 thread_count = 2;
             }
-            thread_pool_ = std::make_unique<folly::CPUThreadPoolExecutor>(thread_count);
+            thread_pool_ = std::make_unique<ThreadPool>(thread_count);
         }
 
         ~Impl() {
-            if (thread_pool_) {
-                thread_pool_->join();
-            }
+            // ThreadPool destructor automatically calls join()
         }
 
         void onDataReceived(const std::shared_ptr<IProtocol>& proto,
