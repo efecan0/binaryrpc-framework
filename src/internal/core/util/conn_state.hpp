@@ -17,9 +17,8 @@
 #include <cstdint>
 #include <atomic>
 #include <chrono>
-#include <folly/SharedMutex.h>
-#include <folly/container/F14Map.h>
-#include <folly/container/F14Set.h>
+#include <shared_mutex>
+#include <ankerl/unordered_dense.h>
 
 namespace binaryrpc {
 
@@ -60,18 +59,18 @@ namespace binaryrpc {
     struct ConnState {
         /*──────── QoS-1 ────────*/
         std::atomic_uint64_t                 nextId{ 1 }; ///< Next message ID for QoS-1
-        folly::F14FastMap<uint64_t, FrameInfo> pending1; ///< Pending QoS-1 frames
-        folly::SharedMutex                   pendMx;     ///< Mutex for QoS-1 pending frames
+        ankerl::unordered_dense::map<uint64_t, FrameInfo> pending1; ///< Pending QoS-1 frames
+        std::shared_mutex                   pendMx;     ///< Mutex for QoS-1 pending frames
 
         /* "gördüm" kümesi */
-        folly::F14FastSet<uint64_t>         seenSet;     ///< Set of seen message IDs (duplicate detection)
+        ankerl::unordered_dense::set<uint64_t>         seenSet;     ///< Set of seen message IDs (duplicate detection)
         std::deque<std::pair<uint64_t, std::chrono::steady_clock::time_point>> seenQ; ///< Queue of seen IDs and timestamps
 
         /*──────── QoS-2 ────────*/
-        folly::F14FastMap<uint64_t, std::vector<uint8_t>> pubPrepare;  ///< PREPARE state frames
-        folly::F14FastMap<uint64_t, std::vector<uint8_t>> pendingResp; ///< COMMIT state frames
-        folly::F14FastMap<uint64_t, Q2Meta> qos2Pending;               ///< QoS-2 metadata
-        folly::SharedMutex                   q2Mx;        ///< Mutex for QoS-2 state
+        ankerl::unordered_dense::map<uint64_t, std::vector<uint8_t>> pubPrepare;  ///< PREPARE state frames
+        ankerl::unordered_dense::map<uint64_t, std::vector<uint8_t>> pendingResp; ///< COMMIT state frames
+        ankerl::unordered_dense::map<uint64_t, Q2Meta> qos2Pending;               ///< QoS-2 metadata
+        std::shared_mutex                   q2Mx;        ///< Mutex for QoS-2 state
 
         /* İstatistik / quota için toplam bayt */
         std::size_t queuedBytes{ 0 }; ///< Total bytes queued for statistics/quota
