@@ -86,4 +86,4 @@ vcpkg_installed
 vcpkg-configuration.json
 
 # Third-party libraries (submodules)
-third_party/
+# third_party/  # Commented out to allow submodules
