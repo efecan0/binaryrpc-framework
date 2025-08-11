@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file websocket_transport.cpp
  * @brief Implementation of the WebSocketTransport class for BinaryRPC.
  *
@@ -57,11 +57,10 @@ namespace {
     }
 }
 
-#include <folly/Synchronized.h>
-#include <folly/container/F14Map.h>
-#include <folly/SharedMutex.h>
-#include <folly/synchronization/Baton.h>
-#include <folly/hash/Hash.h>
+#include <ankerl/unordered_dense.h>
+#include <shared_mutex>
+#include <mutex>
+#include <set>
 
 using namespace binaryrpc;
 
@@ -186,9 +185,10 @@ namespace binaryrpc {
             if (!ps || !ps->alive.load(std::memory_order_relaxed)) return false;
             
             // Check the connection set
-            return impl->conns.withRLock([ws](const auto& conns) {
-                return conns.contains(ws);
-            });
+            {
+                std::shared_lock<std::shared_mutex> lock(impl->mx);
+                return impl->conns.find(ws) != impl->conns.end();
+            }
         }
 
         /**
@@ -350,15 +350,16 @@ namespace binaryrpc {
             info.nextRetry = now + opts.backoffStrategy->nextDelay(1);
 
             // First, check the connection
-            if (!conns.withRLock([ws](const auto& conns) {
-                return conns.contains(ws);
-            })) {
-                LOG_WARN("WebSocket no longer in connection set");
-                return;
+            {
+                std::shared_lock<std::shared_mutex> lock(mx);
+                if (conns.find(ws) == conns.end()) {
+                    LOG_WARN("WebSocket no longer in connection set");
+                    return;
+                }
             }
 
             // First, lock pendMx
-            std::unique_lock<folly::SharedMutex> pendLk(st->pendMx);
+            std::unique_lock<std::shared_mutex> pendLk(st->pendMx);
                 st->pending1[id] = std::move(info);
                 LOG_DEBUG("Added message id=" + std::to_string(id) + " to pending1 queue");
 
@@ -388,7 +389,7 @@ namespace binaryrpc {
                 auto now_tp = std::chrono::steady_clock::now();
 
                 // First, lock q2Mx
-                std::unique_lock<folly::SharedMutex> q2Lk(st->q2Mx);
+                std::unique_lock<std::shared_mutex> q2Lk(st->q2Mx);
                 
                 // Check if already in qos2Pending
                 if (st->qos2Pending.count(id)) {
@@ -398,7 +399,7 @@ namespace binaryrpc {
 
                 // Sonra pendMx'i kilitle
                 {
-                    std::unique_lock<folly::SharedMutex> pendLk(st->pendMx);
+                    std::unique_lock<std::shared_mutex> pendLk(st->pendMx);
                     if (st->pubPrepare.count(id) || st->pendingResp.count(id)) {
                         LOG_WARN("sendQoS2: Message ID " + std::to_string(id) + " already in ConnState pipeline (pubPrepare/pendingResp). Skipping.");
                         return;
@@ -465,7 +466,7 @@ namespace binaryrpc {
 
             // QoS1 retries
             {
-                std::unique_lock<folly::SharedMutex> pendLk(st->pendMx);
+                std::unique_lock<std::shared_mutex> pendLk(st->pendMx);
                 for (auto it = st->pending1.begin(); it != st->pending1.end();) {
                     if (now >= it->second.nextRetry) {
                         if (opts.maxRetry > 0 && it->second.retryCount >= opts.maxRetry) {
@@ -489,7 +490,7 @@ namespace binaryrpc {
 
             // QoS2 retries
             {
-                std::unique_lock<folly::SharedMutex> q2Lk(st->q2Mx);
+                std::unique_lock<std::shared_mutex> q2Lk(st->q2Mx);
                 for (auto it = st->qos2Pending.begin(); it != st->qos2Pending.end();) {
                     if (now >= it->second.nextRetry) {
                         if (opts.maxRetry > 0 && it->second.retryCount >= opts.maxRetry) {
@@ -523,12 +524,13 @@ namespace binaryrpc {
                 auto now = std::chrono::steady_clock::now();
                 
                 // Check retries for each connection
-                conns.withRLock([this, now](const auto& conns_set) {
-                    for (auto* ws : conns_set) {
+                {
+                    std::shared_lock<std::shared_mutex> lock(mx);
+                    for (auto* ws : conns) {
                         if (!ws || !ws->getUserData()) continue;
                         checkAndProcessRetries(ws, now);
                     }
-                });
+                }
                 
                 // Session cleanup
                 smgr.reap(clockMs());
@@ -553,19 +555,20 @@ namespace binaryrpc {
             if (!st) return;
             
             // First, check the connection
-            if (!conns.withRLock([ws](const auto& conns) {
-                return conns.contains(ws);
-            })) {
-                LOG_WARN("WebSocket no longer in connection set");
-                return;
+            {
+                std::shared_lock<std::shared_mutex> lock(mx);
+                if (conns.find(ws) == conns.end()) {
+                    LOG_WARN("WebSocket no longer in connection set");
+                    return;
+                }
             }
             
             auto now = std::chrono::steady_clock::now();
-            std::unique_lock<folly::SharedMutex> pendLk(st->pendMx);
+            std::unique_lock<std::shared_mutex> pendLk(st->pendMx);
 
             for (auto it = st->pending1.begin(); it != st->pending1.end();) {
                 if (st->seenSet.contains(it->first)) {     
-                    it = st->pending1.erase(it);           // ACKed – clean up
+                    it = st->pending1.erase(it);           // ACKed � clean up
                     continue;
                 }
                 auto& info = it->second;
@@ -600,7 +603,7 @@ namespace binaryrpc {
          * @return True if the ID was newly registered, false if it was already seen.
          */
         static bool registerSeen(ConnState& st, uint64_t id, uint32_t ttlMs) {
-            std::unique_lock<folly::SharedMutex> pendLk(st.pendMx);
+            std::unique_lock<std::shared_mutex> pendLk(st.pendMx);
             auto now = std::chrono::steady_clock::now();
             auto ttl = std::chrono::milliseconds(ttlMs);
             while (!st.seenQ.empty() && now - st.seenQ.front().second > ttl) {
@@ -676,16 +679,16 @@ namespace binaryrpc {
                     session->id(),
                     [this, session](const std::vector<uint8_t>& data) {
                         // Find the WebSocket
-                        // Corrected: Use conns.withRLock to access conns
-                        conns.withRLock([this, session, &data](const auto& active_conns) { // Changed lambda param name
-                            for (auto* ws : active_conns) {
-                            if (ws && ws->getUserData() && 
-                                ws->getUserData()->session == session) {
-                                sendFrame(ws, data);
-                                return;
+                        {
+                            std::shared_lock<std::shared_mutex> lock(mx);
+                            for (auto* ws : conns) {
+                                if (ws && ws->getUserData() && 
+                                    ws->getUserData()->session == session) {
+                                    sendFrame(ws, data);
+                                    return;
+                                }
                             }
                         }
-                        });
                     }
                 );
             } else {
@@ -698,8 +701,8 @@ namespace binaryrpc {
         uint16_t        idleTimeout;
         uint32_t     maxPay;
         ReliableOptions opts{ QoSLevel::None };
-        folly::Synchronized<std::set<WS*>> conns;
-        folly::SharedMutex mx;
+        std::set<WS*> conns;
+        std::shared_mutex mx;
         std::jthread     retryTh;
         std::jthread serverTh;
         DataCallback    dataCb;
@@ -734,19 +737,20 @@ namespace binaryrpc {
             || newOpts.baseRetryMs != pImpl_->opts.baseRetryMs
             || newOpts.maxRetry != pImpl_->opts.maxRetry;
         if (reset) {
-            pImpl_->conns.withWLock([&](auto& conns_set) {
-                for (auto* ws : conns_set) {
+            {
+                std::unique_lock<std::shared_mutex> lock(pImpl_->mx);
+                for (auto* ws : pImpl_->conns) {
                     if (ws && ws->getUserData() && ws->getUserData()->state) { // Ensure psd and state are valid
-                auto st = ws->getUserData()->state;
-                        std::unique_lock<folly::SharedMutex> pendLk(st->pendMx);
-                st->pending1.clear();
-                st->seenSet.clear();
-                st->seenQ.clear();
-                st->pubPrepare.clear();
+                        auto st = ws->getUserData()->state;
+                        std::unique_lock<std::shared_mutex> pendLk(st->pendMx);
+                        st->pending1.clear();
+                        st->seenSet.clear();
+                        st->seenQ.clear();
+                        st->pubPrepare.clear();
                         // qos2Pend is handled by q2mx, no need to clear here directly from ConnState
-            }
+                    }
                 }
-            });
+            }
         }
         pImpl_->opts = std::move(newOpts);
     }
@@ -778,7 +782,7 @@ namespace binaryrpc {
 
                 wsBeh.upgrade = [this](auto* res, auto* req, auto* ctx)
                 {
-                    /* 1) ———  Create identity with inspector  ——— */
+                    /* 1) ���  Create identity with inspector  ��� */
                     auto identity = getInspector()->extract(*req);
                     if (!identity) {
                         LOG_ERROR("Handshake inspection failed: " + pImpl_->inspector->rejectReason());
@@ -791,7 +795,7 @@ namespace binaryrpc {
                     }
 
 
-                    /* 2) ———  Request session from SessionManager  ——— */
+                    /* 2) ���  Request session from SessionManager  ��� */
                     std::uint64_t nowMs = clockMs();  // use steady_clock
                     auto sess = pImpl_->smgr.getOrCreate(*identity, nowMs);
 
@@ -809,18 +813,18 @@ namespace binaryrpc {
                     std::string dbgMsg = "Session created/found - id: " + std::string(sess->id());
                     LOG_DEBUG(dbgMsg);
 
-                    /* 3) ———  Prepare PerSocketData  ——— */
+                    /* 3) ���  Prepare PerSocketData  ��� */
                     PerSocketData psd;
                     psd.session = sess;
                     psd.state = sess->qosState;
                     psd.lastActive = std::chrono::steady_clock::now();
 
 
-                    /* 4) ———  Add current token to 101 response  ——— */
+                    /* 4) ���  Add current token to 101 response  ��� */
                     std::string tokenHex = binaryrpc::toHex(sess->identity().sessionToken);
 
 
-                    /* 5) ———  uWS upgrade (HTTP ➞ WS)   ——— */
+                    /* 5) ���  uWS upgrade (HTTP ? WS)   ��� */
                     const std::string_view wsKey = req->getHeader("sec-websocket-key");
                     if (wsKey.empty()) {
                         LOG_ERROR("Missing Sec-WebSocket-Key header");
@@ -861,7 +865,7 @@ namespace binaryrpc {
                         try {
                             res->writeStatus("500 Internal Server Error")->end("Upgrade failed");
                         }
-                        catch (...) {/* ignore – socket closed */ }
+                        catch (...) {/* ignore � socket closed */ }
                     }
                 };
 
@@ -876,15 +880,16 @@ namespace binaryrpc {
 
                     auto st = session->qosState;
                     {
-                        std::unique_lock<folly::SharedMutex> pendLk(st->pendMx);
+                        std::unique_lock<std::shared_mutex> pendLk(st->pendMx);
                         LOG_INFO("Replay open: sid= " +
                                  std::string(session->id()) + ", pending1= " + std::to_string(st->pending1.size()));
                     }
 
                     /* 2. Add to transport list */
-                    pImpl_->conns.withWLock([ws](auto& conns_set) { // Changed conns to conns_set to avoid conflict
-                        conns_set.insert(ws);
-                    });
+                    {
+                        std::unique_lock<std::shared_mutex> lock(pImpl_->mx);
+                        pImpl_->conns.insert(ws);
+                    }
 
                     session->connectionState = ConnectionState::ONLINE;
                     pImpl_->handleSessionState(session, true);
@@ -919,15 +924,16 @@ namespace binaryrpc {
                     case FRAME_ACK: {
                         //std::string debugMsg = "Processing FRAME_ACK for message id: " + std::to_string(id);
                         // First, check the connection
-                        if (!pImpl_->conns.withRLock([ws](const auto& conns) {
-                            return conns.contains(ws);
-                        })) {
-                            LOG_WARN("WebSocket no longer in connection set");
-                            return;
+                        {
+                            std::shared_lock<std::shared_mutex> lock(pImpl_->mx);
+                            if (pImpl_->conns.find(ws) == pImpl_->conns.end()) {
+                                LOG_WARN("WebSocket no longer in connection set");
+                                return;
+                            }
                         }
                         
                         // Then, lock pendMx
-                        std::unique_lock<folly::SharedMutex> pendLk(st->pendMx);
+                        std::unique_lock<std::shared_mutex> pendLk(st->pendMx);
                         auto it = st->pending1.find(id);
                         if (it != st->pending1.end()) {
                             //std::string debugMsg = "Found message in pending1, removing id: " + std::to_string(id);
@@ -980,12 +986,12 @@ namespace binaryrpc {
                         auto now = std::chrono::steady_clock::now();
                         
                         // First, lock q2Mx
-                        std::unique_lock<folly::SharedMutex> q2Lk(st->q2Mx);
+                        std::unique_lock<std::shared_mutex> q2Lk(st->q2Mx);
                         auto it = st->qos2Pending.find(id);
                         if (it != st->qos2Pending.end() && it->second.stage == Q2Meta::Stage::PREPARE) {
                             // First, update the session state
                             {
-                                std::unique_lock<folly::SharedMutex> pendLk(st->pendMx);
+                                std::unique_lock<std::shared_mutex> pendLk(st->pendMx);
                                 auto it2 = st->pubPrepare.find(id);
                                 if (it2 != st->pubPrepare.end()) {
                                     st->pendingResp[id] = std::move(it2->second);
@@ -1017,12 +1023,12 @@ namespace binaryrpc {
                         LOG_DEBUG("Processing FRAME_COMPLETE for message id: " + std::to_string(id));
                         
                         // First, lock q2Mx
-                        std::unique_lock<folly::SharedMutex> q2Lk(st->q2Mx);
+                        std::unique_lock<std::shared_mutex> q2Lk(st->q2Mx);
 
                         st->qos2Pending.erase(id);
                        
                         // Then, lock pendMx
-                        std::unique_lock<folly::SharedMutex> pendLk(st->pendMx);
+                        std::unique_lock<std::shared_mutex> pendLk(st->pendMx);
                         auto it = st->pendingResp.find(id);
                         if (it != st->pendingResp.end()) {
                             auto dataFrame = Impl::makeFrame(FRAME_DATA, id, it->second);
@@ -1071,21 +1077,23 @@ namespace binaryrpc {
                     
                     LOG_DEBUG("WebSocket close - session: " + std::string(session->id()));
                     
-                    pImpl_->conns.withWLock([ws](auto& conns) {
-                        conns.erase(ws);
-                    });
+                    {
+                        std::unique_lock<std::shared_mutex> lock(pImpl_->mx);
+                        pImpl_->conns.erase(ws);
+                    }
 
                     const auto& cid = session->identity();
                     bool alive = false;
                     
-                    pImpl_->conns.withRLock([&](const auto& conns) {
-                        alive = std::ranges::any_of(conns.begin(), conns.end(),
+                    {
+                        std::shared_lock<std::shared_mutex> lock(pImpl_->mx);
+                        alive = std::ranges::any_of(pImpl_->conns.begin(), pImpl_->conns.end(),
                             [cid](WS* other) {
                                 return other && other->getUserData() && 
                                        other->getUserData()->session && 
                                        other->getUserData()->session->identity() == cid;
                             });
-                    });
+                    }
 
                     if (!alive) {
                         LOG_DEBUG("WebSocket close - marking session OFFLINE: " + std::string(session->id()));
@@ -1137,11 +1145,10 @@ namespace binaryrpc {
     }
 
     void WebSocketTransport::send(const std::vector<uint8_t>& data) {
-        pImpl_->conns.withRLock([this, &data](const auto& conns) {
-            for (auto* ws : conns) {
-                pImpl_->sendFrame(ws, data);
-            }
-        });
+        std::shared_lock<std::shared_mutex> lock(pImpl_->mx);
+        for (auto* ws : pImpl_->conns) {
+            pImpl_->sendFrame(ws, data);
+        }
     }
     void WebSocketTransport::sendToClient(void* conn, const std::vector<uint8_t>& data) {
         if (auto* ws = static_cast<WS*>(conn)) pImpl_->sendFrame(ws, data);
@@ -1164,15 +1171,16 @@ namespace binaryrpc {
 
         // If online, find the WebSocket and send
         WS* targetWs = nullptr;
-        pImpl_->conns.withRLock([&](const auto& conns) {
-            for (auto* ws : conns) {
+        {
+            std::shared_lock<std::shared_mutex> lock(pImpl_->mx);
+            for (auto* ws : pImpl_->conns) {
                 if (ws && ws->getUserData() && 
                     ws->getUserData()->session == session) {
                     targetWs = ws;
                     break;
                 }
             }
-        });
+        }
 
         // If WebSocket is found and still valid, send
         if (targetWs && Impl::isWsAlive(targetWs, pImpl_.get())) {
