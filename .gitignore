@@ -26,6 +26,7 @@ Testing/
 # IDE files
 .idea/
 .vscode/
+.vs/
 *.sln
 *.vcxproj
 *.vcxproj.*
