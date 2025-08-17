@@ -1,6 +1,10 @@
 ﻿// src/main.cpp
+#include "binaryrpc/core/rpc/rpc_context.hpp"
+#include "binaryrpc/core/protocol/simple_text_protocol.hpp"
+#include "binaryrpc/core/util/logger.hpp"
+#include <iostream>
 #include "binaryrpc/core/app.hpp"                              // App sÄ±nÄ±fÄ± :contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1}
-#include "../include/binaryrpc/transports/websocket/websocket_transport.hpp"
+#include "binaryrpc/transports/websocket/websocket_transport.hpp"
 #include "binaryrpc/core/util/qos.hpp"
 
 using namespace binaryrpc;
