@@ -43,9 +43,13 @@ endif()
 add_library(binaryrpc_core STATIC ${BINARYRPC_CORE_SOURCES})
 
 # PUBLIC includes are handled by vcpkg's targets. We just need to add our own project's include path.
-target_include_directories(binaryrpc_core PUBLIC include)
-target_include_directories(binaryrpc_core PRIVATE src)
-target_include_directories(binaryrpc_core PRIVATE third_party/unordered_dense/include)
+target_include_directories(binaryrpc_core
+  PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/unordered_dense/include
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 # Link all libraries using their modern imported targets provided by vcpkg.
 target_link_libraries(binaryrpc_core PUBLIC
