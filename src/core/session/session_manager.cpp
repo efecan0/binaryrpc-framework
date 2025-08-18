@@ -1,4 +1,4 @@
-﻿#include "internal/core/session/session_manager.hpp"
+﻿#include "binaryrpc/core/session/session_manager.hpp"
 #include "internal/core/util/conn_state.hpp"
 #include "binaryrpc/core/session/session.hpp"
 #include "binaryrpc/core/auth/ClientIdentity.hpp"

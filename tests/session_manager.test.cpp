@@ -1,5 +1,5 @@
 ﻿#include <catch2/catch_all.hpp>
-#include "internal/core/session/session_manager.hpp"
+#include "binaryrpc/core/session/session_manager.hpp"
 #include <thread>
 #include <vector>
 #include <atomic>

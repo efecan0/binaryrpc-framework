@@ -1,5 +1,5 @@
 ﻿#include "binaryrpc/core/framework_api.hpp"
-#include "internal/core/session/session_manager.hpp"
+#include "binaryrpc/core/session/session_manager.hpp"
 #include "binaryrpc/core/interfaces/itransport.hpp"
 #include "binaryrpc/core/util/logger.hpp"
 #include <iostream>

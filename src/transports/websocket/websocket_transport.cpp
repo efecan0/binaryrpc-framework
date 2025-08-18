@@ -10,7 +10,7 @@
 #include "binaryrpc/transports/websocket/websocket_transport.hpp"
 
 // Project-specific internal and public headers that were moved from the header
-#include "internal/core/session/session_manager.hpp"
+#include "binaryrpc/core/session/session_manager.hpp"
 #include "internal/core/util/conn_state.hpp"
 #include "binaryrpc/core/util/qos.hpp"
 #include "binaryrpc/core/interfaces/IHandshakeInspector.hpp"

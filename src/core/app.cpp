@@ -8,7 +8,7 @@
 
 #include "binaryrpc/core/middleware/middleware_chain.hpp"
 #include "internal/core/rpc/rpc_manager.hpp"
-#include "internal/core/session/session_manager.hpp"
+#include "binaryrpc/core/session/session_manager.hpp"
 #include "binaryrpc/core/util/logger.hpp"
 #include "binaryrpc/core/util/error_types.hpp"
 
