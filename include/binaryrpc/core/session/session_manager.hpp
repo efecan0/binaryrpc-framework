@@ -16,18 +16,13 @@
 #include <mutex>
 #include <shared_mutex>
 #include <atomic>
-#include "internal/core/session/generic_index.hpp"
-#include "binaryrpc/core/util/logger.hpp"
-#include <format>
 #include <vector>
-#include "internal/core/util/random.hpp"
-#include "internal/core/util/time.hpp"
-#include <any>          // Generic state değerleri için
-#include <cstring>
+#include <any>
 #include <queue>
 #include <functional>
-#include <optional> // For std::optional
-#include <thread>   // For std::jthread
+#include <optional>
+#include <thread>
+#include <unordered_set>
 
 namespace binaryrpc {
     /**
@@ -37,24 +32,20 @@ namespace binaryrpc {
      * Handles session creation, lookup, removal, state management, offline message queuing,
      * and TTL-based cleanup for all client sessions.
      */
+    class GenericIndex; // forward declaration, kept internal
+
     class SessionManager {
     public:
         /**
          * @brief Construct a SessionManager with a session TTL in milliseconds.
          * @param ttlMs Session time-to-live in milliseconds (default: 30,000 ms)
          */
-        explicit SessionManager(std::uint64_t ttlMs = 30'000)  // 30 s default
-            : ttlMs_{ ttlMs } {}
+        explicit SessionManager(std::uint64_t ttlMs = 30'000);
 
         /**
          * @brief Destructor for SessionManager. Cleans up the background cleanup thread.
          */
-        ~SessionManager() {
-            if (cleanupThread_.joinable()) {
-                cleanupThread_.request_stop();
-                cleanupThread_.join();
-            }
-        }
+        ~SessionManager();
         /**
          * @brief Create a new session for a given client identity.
          * @param cid Client identity
@@ -109,7 +100,11 @@ namespace binaryrpc {
          * @brief Get the generic index for fast field-based lookup.
          * @return Reference to the GenericIndex
          */
-        GenericIndex& indices() { return index_; }     // ★ O(1) findByX
+        GenericIndex& indices();     // ★ O(1) findByX
+
+        // Preferred public lookup to avoid exposing GenericIndex in user code
+        std::unordered_set<std::string>
+            findIndexed(const std::string& key, const std::string& value) const;
 
         /**
          * @brief Remove expired sessions based on TTL.
@@ -189,7 +184,7 @@ namespace binaryrpc {
 
         //----------------ANA YAPILAR---------------------------//
         std::unordered_map<std::string, std::shared_ptr<Session>> sessions_;
-        GenericIndex index_;
+        GenericIndex* index_;
 
         // State storage - thread-safe erişim için shared_mutex
         std::unordered_map<std::string, std::unordered_map<std::string, std::any>> state_;

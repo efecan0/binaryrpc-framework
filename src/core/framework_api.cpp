@@ -58,8 +58,7 @@ namespace binaryrpc {
             const std::string& value) const
     {
         std::vector<std::shared_ptr<Session>> out;
-        auto& idx = pImpl_->sm_->indices();
-        auto sids = idx.find(key, value);
+        auto sids = pImpl_->sm_->findIndexed(key, value);
         out.reserve(sids.size());
         for (const auto& sid : sids) {
             if (auto s = pImpl_->sm_->getSession(sid)) {

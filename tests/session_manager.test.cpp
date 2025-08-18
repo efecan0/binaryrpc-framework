@@ -29,7 +29,7 @@ TEST_CASE("indexedSet() ikincil indekse ekler ve find() döner", "[session][inde
 
     sm.indexedSet(s, "userId", 42);   // int ➜ "42"
 
-    auto ids = sm.indices().find("userId", "42");
+    auto ids = sm.findIndexed("userId", "42");
     REQUIRE(ids.size() == 1);
     REQUIRE(ids.count(s->id()) == 1);
 }
@@ -41,7 +41,7 @@ TEST_CASE("removeSession() kaydı ve indeksleri temizler", "[session][index]") {
 
     sm.removeSession(s->id());
     REQUIRE(sm.getSession(s->id()) == nullptr);
-    REQUIRE(sm.indices().find("room", "lobby").empty());
+    REQUIRE(sm.findIndexed("room", "lobby").empty());
 }
 
 TEST_CASE("indexedSet overwrites previous value but maintains consistency", "[session][index]") {
@@ -50,8 +50,8 @@ TEST_CASE("indexedSet overwrites previous value but maintains consistency", "[se
     sm.indexedSet(s, "room", std::string("lobby"));
     sm.indexedSet(s, "room", std::string("garden"));   // overwrite
 
-    REQUIRE(sm.indices().find("room", "lobby").empty());
-    auto ids = sm.indices().find("room", "garden");
+    REQUIRE(sm.findIndexed("room", "lobby").empty());
+    auto ids = sm.findIndexed("room", "garden");
     REQUIRE(ids.count(s->id()) == 1);
 }
 
@@ -62,7 +62,7 @@ TEST_CASE("find() returns multiple sessions sharing same key", "[session][index]
     sm.indexedSet(a, "tenant", 5);
     sm.indexedSet(b, "tenant", 5);
 
-    auto ids = sm.indices().find("tenant", "5");
+    auto ids = sm.findIndexed("tenant", "5");
     REQUIRE(ids.size() == 2);
     REQUIRE(ids.count(a->id()) == 1);
     REQUIRE(ids.count(b->id()) == 1);
@@ -100,6 +100,6 @@ TEST_CASE("indices() snapshot reflects current state after erase", "[session][in
     sm.indexedSet(s, "user", 1);
     sm.removeSession(s->id());
 
-    auto ids = sm.indices().find("user", "1");
+    auto ids = sm.findIndexed("user", "1");
     REQUIRE(ids.empty());
 }
