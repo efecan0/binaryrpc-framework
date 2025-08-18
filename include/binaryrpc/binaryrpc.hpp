@@ -13,6 +13,7 @@
 // RPC and Session context
 #include "binaryrpc/core/rpc/rpc_context.hpp"
 #include "binaryrpc/core/session/session.hpp"
+#include "binaryrpc/core/session/session_manager.hpp"
 
 // Client identity for authentication
 #include "binaryrpc/core/auth/ClientIdentity.hpp"
