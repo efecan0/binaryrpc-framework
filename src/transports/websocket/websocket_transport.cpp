@@ -19,6 +19,7 @@
 #include "binaryrpc/core/util/logger.hpp"
 #include "binaryrpc/core/session/session.hpp"
 #include "internal/core/util/hex.hpp"
+#include "internal/core/util/time.hpp"
 #include <uwebsockets/App.h>
 #include <utility>
 
