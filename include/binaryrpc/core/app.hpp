@@ -23,6 +23,7 @@ namespace binaryrpc {
     class IPlugin;
     class IProtocol;
     class SessionManager; // This will be opaque
+    class FrameworkAPI;
 
     /**
      * @class App
@@ -105,6 +106,11 @@ namespace binaryrpc {
          * @return Const reference to the SessionManager
          */
         const SessionManager& getSessionManager() const;
+        /**
+         * @brief Get a reference to the FrameworkAPI.
+         * @return Reference to the FrameworkAPI
+         */
+        FrameworkAPI& getFrameworkApi();
         /**
          * @brief Set the protocol.
          * @param proto Protocol instance to use

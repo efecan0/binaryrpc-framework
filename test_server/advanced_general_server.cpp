@@ -23,7 +23,7 @@ int main() {
 
     app.setTransport(std::move(ws));
 
-    FrameworkAPI api(&sm, app.getTransport());
+    auto& api = app.getFrameworkApi();
 
     // === Middleware: log session ID ve requestCount ===
     app.use([](Session& s, const std::string& method, std::vector<uint8_t>& payload, NextFunc next) {

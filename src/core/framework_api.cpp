@@ -57,12 +57,18 @@ namespace binaryrpc {
         FrameworkAPI::findBy(const std::string& key,
             const std::string& value) const
     {
+        if (!pImpl_ || !pImpl_->sm_) {
+            LOG_ERROR("[FrameworkAPI] pImpl_ or SessionManager is null!");
+            return {};
+        }
         std::vector<std::shared_ptr<Session>> out;
-        auto sids = pImpl_->sm_->findIndexed(key, value);
-        out.reserve(sids.size());
-        for (const auto& sid : sids) {
-            if (auto s = pImpl_->sm_->getSession(sid)) {
-                out.push_back(s);
+        auto sids_ptr = pImpl_->sm_->findIndexed(key, value);
+        if (sids_ptr) {
+            out.reserve(sids_ptr->size());
+            for (const auto& sid : *sids_ptr) {
+                if (auto s = pImpl_->sm_->getSession(sid)) {
+                    out.push_back(s);
+                }
             }
         }
         return out;

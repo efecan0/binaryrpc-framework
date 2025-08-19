@@ -32,7 +32,7 @@ int main() {
     ws->setReliable(opts);
     app.setTransport(std::move(ws));
 
-    FrameworkAPI api(&app.getSessionManager(), app.getTransport());
+    auto& api = app.getFrameworkApi();
 
 
     app.registerRPC("echo", [](const std::vector<uint8_t>& req, RpcContext& ctx) {

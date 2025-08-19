@@ -5,6 +5,7 @@
 #include "binaryrpc/core/interfaces/itransport.hpp"
 #include "binaryrpc/core/protocol/simple_text_protocol.hpp"
 #include "binaryrpc/core/session/session.hpp"
+#include "binaryrpc/core/framework_api.hpp"
 
 #include "binaryrpc/core/middleware/middleware_chain.hpp"
 #include "internal/core/rpc/rpc_manager.hpp"
@@ -27,6 +28,7 @@ namespace binaryrpc {
         std::vector<std::unique_ptr<IPlugin>> plugins_;
         std::shared_ptr<IProtocol> protocol_;
         std::unique_ptr<ThreadPool> thread_pool_;
+        std::unique_ptr<FrameworkAPI> frameworkApi_;
 
         Impl() {
             auto thread_count = std::thread::hardware_concurrency();
@@ -125,11 +127,21 @@ namespace binaryrpc {
             [](std::shared_ptr<Session> session) {
                 // Handle disconnect if needed
             });
+
+        // Create FrameworkAPI instance now that sm and transport are available
+        pImpl_->frameworkApi_ = std::make_unique<FrameworkAPI>(&pImpl_->sessionManager_, pImpl_->transport_.get());
     }
 
     ITransport* App::getTransport() const { return pImpl_->transport_.get(); }
     SessionManager& App::getSessionManager() { return pImpl_->sessionManager_; }
     const SessionManager& App::getSessionManager() const { return pImpl_->sessionManager_; }
+
+    FrameworkAPI& App::getFrameworkApi() {
+        if (!pImpl_->frameworkApi_) {
+            throw std::runtime_error("FrameworkAPI is not initialized. Did you call setTransport?");
+        }
+        return *pImpl_->frameworkApi_;
+    }
 
     void App::usePlugin(std::unique_ptr<IPlugin> plugin) {
         plugin->initialize();
