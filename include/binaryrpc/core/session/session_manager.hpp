@@ -131,7 +131,7 @@ namespace binaryrpc {
         GenericIndex& indices();     // ★ O(1) findByX
 
         // Preferred public lookup to avoid exposing GenericIndex in user code
-        std::unordered_set<std::string>
+        std::shared_ptr<const std::unordered_set<std::string>>
             findIndexed(const std::string& key, const std::string& value) const;
 
         /**

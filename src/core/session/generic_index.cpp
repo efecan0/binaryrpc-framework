@@ -9,25 +9,44 @@ namespace binaryrpc {
     {
         std::unique_lock w(mx_);
 
+        // 1. Önceki değeri (varsa) kaldır
         auto& hist = back_[sid];
         for (auto& fv : hist) {
-            if (fv.first == field) {          // same field
-                if (fv.second == value)       // value hasn't changed → no-op
-                    return;
+            if (fv.first == field) {
+                if (fv.second == value) return; // Değer aynı, işlem yapma
 
-                // remove the old mapping
-                if (auto fit = idx_.find(field); fit != idx_.end())
-                    fit->second[fv.second].erase(sid);
-
-                fv.second = value;            // store the new value in history
-                idx_[field][value].insert(sid);
-                return;
+                // Eski girdiyi idx_'den sil
+                if (auto fit = idx_.find(field); fit != idx_.end()) {
+                    if (auto vit = fit->second.find(fv.second); vit != fit->second.end()) {
+                        vit->second->erase(sid);
+                        if (vit->second->empty()) {
+                            fit->second.erase(vit);
+                        }
+                    }
+                }
+                fv.second = value; // Geçmişi yeni değerle güncelle
             }
         }
 
-        // 2) initial insertion
-        idx_[field][value].insert(sid);
-        hist.emplace_back(field, value);
+        // 2. Yeni değeri ekle
+        auto& valueMap = idx_[field];
+        auto it = valueMap.find(value);
+        if (it == valueMap.end()) {
+            it = valueMap.emplace(value, std::make_shared<SidSet>()).first;
+        }
+        it->second->insert(sid);
+
+        // 3. Geçmişe ekle (eğer yeni bir alan ise)
+        bool fieldExists = false;
+        for (const auto& fv : hist) {
+            if (fv.first == field) {
+                fieldExists = true;
+                break;
+            }
+        }
+        if (!fieldExists) {
+            hist.emplace_back(field, value);
+        }
     }
 
     /*──────────── remove session ─────────*/
@@ -44,12 +63,14 @@ namespace binaryrpc {
             auto vit = valueMap.find(v);
             if (vit == valueMap.end()) continue;
 
-            vit->second.erase(sid);
-            if (vit->second.empty())
-                valueMap.erase(v);
+            if(vit->second) {
+                vit->second->erase(sid);
+                if (vit->second->empty())
+                    valueMap.erase(vit);
+            }
 
             if (valueMap.empty())
-                idx_.erase(f);
+                idx_.erase(fit);
         }
 
         back_.erase(it);
@@ -57,15 +78,15 @@ namespace binaryrpc {
 
 
     /*──────────── O(1) lookup ────────────*/
-    std::unordered_set<std::string>
+    std::shared_ptr<const std::unordered_set<std::string>>
         GenericIndex::find(const std::string& field,
             const std::string& value) const
     {
         std::shared_lock r(mx_);
         auto fit = idx_.find(field);
-        if (fit == idx_.end()) return {};
+        if (fit == idx_.end()) return nullptr;
         auto vit = fit->second.find(value);
-        if (vit == fit->second.end()) return {};
+        if (vit == fit->second.end()) return nullptr;
         return vit->second;
     }
 

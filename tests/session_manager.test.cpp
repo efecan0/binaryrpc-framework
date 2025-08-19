@@ -29,9 +29,10 @@ TEST_CASE("indexedSet() ikincil indekse ekler ve find() döner", "[session][inde
 
     sm.indexedSet(s, "userId", 42);   // int ➜ "42"
 
-    auto ids = sm.findIndexed("userId", "42");
-    REQUIRE(ids.size() == 1);
-    REQUIRE(ids.count(s->id()) == 1);
+    auto ids_ptr = sm.findIndexed("userId", "42");
+    REQUIRE(ids_ptr);
+    REQUIRE(ids_ptr->size() == 1);
+    REQUIRE(ids_ptr->count(s->id()) == 1);
 }
 
 TEST_CASE("removeSession() kaydı ve indeksleri temizler", "[session][index]") {
@@ -41,7 +42,7 @@ TEST_CASE("removeSession() kaydı ve indeksleri temizler", "[session][index]") {
 
     sm.removeSession(s->id());
     REQUIRE(sm.getSession(s->id()) == nullptr);
-    REQUIRE(sm.findIndexed("room", "lobby").empty());
+    REQUIRE_FALSE(sm.findIndexed("room", "lobby"));
 }
 
 TEST_CASE("indexedSet overwrites previous value but maintains consistency", "[session][index]") {
@@ -50,9 +51,10 @@ TEST_CASE("indexedSet overwrites previous value but maintains consistency", "[se
     sm.indexedSet(s, "room", std::string("lobby"));
     sm.indexedSet(s, "room", std::string("garden"));   // overwrite
 
-    REQUIRE(sm.findIndexed("room", "lobby").empty());
-    auto ids = sm.findIndexed("room", "garden");
-    REQUIRE(ids.count(s->id()) == 1);
+    REQUIRE_FALSE(sm.findIndexed("room", "lobby"));
+    auto ids_ptr = sm.findIndexed("room", "garden");
+    REQUIRE(ids_ptr);
+    REQUIRE(ids_ptr->count(s->id()) == 1);
 }
 
 TEST_CASE("find() returns multiple sessions sharing same key", "[session][index]") {
@@ -62,10 +64,11 @@ TEST_CASE("find() returns multiple sessions sharing same key", "[session][index]
     sm.indexedSet(a, "tenant", 5);
     sm.indexedSet(b, "tenant", 5);
 
-    auto ids = sm.findIndexed("tenant", "5");
-    REQUIRE(ids.size() == 2);
-    REQUIRE(ids.count(a->id()) == 1);
-    REQUIRE(ids.count(b->id()) == 1);
+    auto ids_ptr = sm.findIndexed("tenant", "5");
+    REQUIRE(ids_ptr);
+    REQUIRE(ids_ptr->size() == 2);
+    REQUIRE(ids_ptr->count(a->id()) == 1);
+    REQUIRE(ids_ptr->count(b->id()) == 1);
 }
 
 TEST_CASE("removeSession on unknown id is no‑op", "[session]") {
@@ -83,7 +86,7 @@ TEST_CASE("Concurrent indexedSet is thread‑safe", "[session][concurrency]") {
     std::vector<std::thread> threads;
 
     for (int i = 0; i < N; ++i) {
-        threads.emplace_back([&, i] { 
+        threads.emplace_back([&, i] {
             sm.indexedSet(s, "counter", i);
             done.fetch_add(1, std::memory_order_relaxed);
             });
@@ -100,6 +103,6 @@ TEST_CASE("indices() snapshot reflects current state after erase", "[session][in
     sm.indexedSet(s, "user", 1);
     sm.removeSession(s->id());
 
-    auto ids = sm.findIndexed("user", "1");
-    REQUIRE(ids.empty());
+    auto ids_ptr = sm.findIndexed("user", "1");
+    REQUIRE_FALSE(ids_ptr);
 }

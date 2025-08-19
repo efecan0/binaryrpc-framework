@@ -82,7 +82,7 @@ SessionManager::~SessionManager() {
 
 GenericIndex& SessionManager::indices() { return *index_; }
 
-std::unordered_set<std::string>
+std::shared_ptr<const std::unordered_set<std::string>>
 SessionManager::findIndexed(const std::string& key, const std::string& value) const {
     return index_->find(key, value);
 }

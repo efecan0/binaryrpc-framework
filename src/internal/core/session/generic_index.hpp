@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <memory>
 
 namespace binaryrpc {
     /**
@@ -48,14 +49,15 @@ namespace binaryrpc {
          * @param value Field value
          * @return Set of matching session IDs
          */
-        std::unordered_set<std::string>
+        std::shared_ptr<const std::unordered_set<std::string>>
             find(const std::string& field,
                 const std::string& value) const;
 
     private:
         using SidSet = std::unordered_set<std::string>;
+        using SidSetPtr = std::shared_ptr<SidSet>;
         std::unordered_map<std::string,                     // field
-            std::unordered_map<std::string, SidSet>> idx_;  // value → {sid…}
+            std::unordered_map<std::string, SidSetPtr>> idx_;  // value → {sid…}
 
         /**
          * @brief Reverse mapping for cleanup: session ID to list of field-value pairs.
