@@ -46,6 +46,34 @@ namespace binaryrpc {
          * @brief Destructor for SessionManager. Cleans up the background cleanup thread.
          */
         ~SessionManager();
+
+        /**
+         * @brief Deleted copy constructor.
+         * @details SessionManager is non-copyable to prevent unintended duplication of
+         *          session state and resource management issues (e.g., double-free of index_).
+         */
+        SessionManager(const SessionManager&) = delete;
+
+        /**
+         * @brief Deleted copy assignment operator.
+         */
+        SessionManager& operator=(const SessionManager&) = delete;
+
+        /**
+         * @brief Move constructor.
+         * @details Transfers ownership of all resources from another SessionManager instance.
+         * @param other The r-value reference to the SessionManager to move from.
+         */
+        SessionManager(SessionManager&&) noexcept;
+
+        /**
+         * @brief Move assignment operator.
+         * @details Transfers ownership of all resources from another SessionManager instance.
+         * @param other The r-value reference to the SessionManager to move from.
+         * @return A reference to this instance.
+         */
+        SessionManager& operator=(SessionManager&&) noexcept;
+
         /**
          * @brief Create a new session for a given client identity.
          * @param cid Client identity
