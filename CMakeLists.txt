@@ -28,6 +28,7 @@ find_package(OpenSSL QUIET) # Optional, mainly for non-windows
 file(GLOB_RECURSE BINARYRPC_CORE_SOURCES CONFIGURE_DEPENDS src/*.cpp src/**/*.cpp)
 set(_EXTRA_CANDIDATES
         src/core/session/generic_index.cpp
+        src/core/session/session_manager.cpp
         src/plugins/room_plugin.cpp
         src/core/protocol/msgpack_protocol.cpp
         src/plugins/reliable_plugin.cpp)
