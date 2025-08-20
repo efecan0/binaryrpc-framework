@@ -25,7 +25,7 @@ namespace binaryrpc {
         RPCManager rpcManager_;
         SessionManager sessionManager_;
         std::unique_ptr<ITransport> transport_;
-        std::vector<std::unique_ptr<IPlugin>> plugins_;
+        std::vector<std::shared_ptr<IPlugin>> plugins_;
         std::shared_ptr<IProtocol> protocol_;
         std::unique_ptr<ThreadPool> thread_pool_;
         std::unique_ptr<FrameworkAPI> frameworkApi_;
@@ -143,7 +143,7 @@ namespace binaryrpc {
         return *pImpl_->frameworkApi_;
     }
 
-    void App::usePlugin(std::unique_ptr<IPlugin> plugin) {
+    void App::usePlugin(std::shared_ptr<IPlugin> plugin) {
         plugin->initialize();
         pImpl_->plugins_.push_back(std::move(plugin));
     }

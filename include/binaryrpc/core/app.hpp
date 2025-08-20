@@ -64,10 +64,10 @@ namespace binaryrpc {
          */
         void setTransport(std::unique_ptr<ITransport> transport);
         /**
-         * @brief Add and initialize a plugin.
+         * @brief Add and initialize a plugin using a shared_ptr.
          * @param plugin Plugin instance to add
          */
-        void usePlugin(std::unique_ptr<IPlugin> plugin);
+        void usePlugin(std::shared_ptr<IPlugin> plugin);
         /**
          * @brief Add a global middleware.
          * @param mw Middleware function to add
