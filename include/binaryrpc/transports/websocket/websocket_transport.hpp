@@ -1,132 +1,38 @@
 ﻿/**
  * @file websocket_transport.hpp
- * @brief WebSocket transport layer for BinaryRPC, providing session management, QoS, and message delivery over WebSocket.
- *
- * This transport implements the ITransport interface using uWebSockets as the underlying protocol.
- * It supports advanced features such as session management, Quality of Service (QoS) levels, offline message queuing,
- * and pluggable handshake inspection. Designed for high-performance, scalable, and reliable RPC communication.
+ * @brief WebSocket transport layer for BinaryRPC.
  */
 #pragma once
 
 #include "binaryrpc/core/interfaces/itransport.hpp"
-#include "binaryrpc/core/session/session_manager.hpp"
-#include "binaryrpc/core/util/qos.hpp"
-#include <memory>
 #include <cstdint>
-#include <deque>
-#include <string_view>
-#include "binaryrpc/core/session/session.hpp"
-#include "binaryrpc/core/interfaces/IHandshakeInspector.hpp"
-#include "binaryrpc/core/util/hex.hpp"
-#include "binaryrpc/core/util/random.hpp"
-#include "binaryrpc/core/util/time.hpp"
-#include <uwebsockets/App.h>
-
-
-#include <unordered_map>
-#include <unordered_set>
-#include <set>
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <cstring>
-#include <chrono>
-#include <iostream>
-
-#ifdef BINARYRPC_TEST
-    #include <functional>
-    #include <vector>
-#endif
+#include <memory>
+#include <functional>
+#include <vector>
 
 namespace binaryrpc {
+    // Forward declarations for opaque types used in the public API
+    class SessionManager;
+    class IHandshakeInspector;
+    struct ReliableOptions;
+    class Session;
 
-/**
- * @enum FrameType
- * @brief Types of frames exchanged over WebSocket for QoS and control.
- *
- * These frame types are used to implement different Quality of Service (QoS) levels and message delivery guarantees.
- */
     enum FrameType : uint8_t {
-    FRAME_DATA      = 0x00,  /**< QoS1 data frame (AtLeastOnce delivery) */
-    FRAME_ACK       = 0x01,  /**< QoS1 acknowledgment frame */
-    FRAME_PREPARE   = 0x02,  /**< QoS2 prepare (PUBLISH) frame (ExactlyOnce delivery) */
-    FRAME_PREPARE_ACK = 0x03,/**< QoS2 prepare acknowledgment (PUBREC) frame */
-    FRAME_COMMIT    = 0x04,  /**< QoS2 commit (PUBREL) frame */
-    FRAME_COMPLETE  = 0x05   /**< QoS2 complete (PUBCOMP) frame */
+        FRAME_DATA      = 0x00,
+        FRAME_ACK       = 0x01,
+        FRAME_PREPARE   = 0x02,
+        FRAME_PREPARE_ACK = 0x03,
+        FRAME_COMMIT    = 0x04,
+        FRAME_COMPLETE  = 0x05
     };
 
-/**
- * @struct PerSocketData
- * @brief Per-connection state for each WebSocket client.
- *
- * Stores session, connection state, activity timestamps, and outgoing message queue for each WebSocket connection.
- * Used internally by the WebSocket transport to manage client-specific data and message delivery.
- */
-    struct PerSocketData {
     /**
-     * @brief Shared pointer to the session associated with this connection.
+     * @class WebSocketTransport
+     * @brief ITransport implementation using uWebSockets.
+     *
+     * Handles session management, Quality of Service (QoS), message delivery, and connection lifecycle for BinaryRPC over WebSocket.
+     * Supports pluggable handshake inspection, offline message queuing, and advanced reliability options.
      */
-        std::shared_ptr<Session>   session;
-    /**
-     * @brief Shared pointer to the connection state (QoS, pending messages, etc.).
-     */
-        std::shared_ptr<ConnState> state;
-    /**
-     * @brief Last activity timestamp for idle timeout management.
-     */
-        std::chrono::steady_clock::time_point lastActive;
-    /**
-     * @brief Indicates if the connection is alive.
-     */
-    std::atomic_bool          alive;
-    /**
-     * @brief Pointer to the uWebSockets event loop for this connection.
-     */
-        uWS::Loop*                 loop;
-    /**
-     * @brief Outgoing message queue for this connection.
-     */
-    std::deque<std::vector<uint8_t>> sendQueue;
-
-    /**
-     * @brief Default constructor.
-     */
-        PerSocketData();
-
-    /**
-     * @brief Copy constructor.
-     * @param o The PerSocketData to copy from.
-     */
-        PerSocketData(const PerSocketData& o);
-
-    /**
-     * @brief Copy assignment operator.
-     * @param o The PerSocketData to copy from.
-     * @return Reference to this object.
-     */
-        PerSocketData& operator=(const PerSocketData& o);
-
-    /**
-     * @brief Move constructor.
-     * @param other The PerSocketData to move from.
-     */
-        PerSocketData(PerSocketData&& other) noexcept;
-
-    /**
-     * @brief Move assignment operator.
-     * @param other The PerSocketData to move from.
-     * @return Reference to this object.
-     */
-        PerSocketData& operator=(PerSocketData&& other) noexcept;
-    };
-
-/**
- * @class WebSocketTransport
- * @brief Implements the ITransport interface using WebSocket as the underlying protocol.
- *
- * Handles session management, Quality of Service (QoS), message delivery, and connection lifecycle for BinaryRPC over WebSocket.
- * Supports pluggable handshake inspection, offline message queuing, and advanced reliability options.
- */
     class WebSocketTransport : public ITransport {
     public:
     /**
@@ -135,7 +41,7 @@ namespace binaryrpc {
      * @param idleTimeoutSec Idle timeout in seconds (default: 45).
      * @param maxPayloadBytes Maximum payload size in bytes (default: 10 MB).
      */
-        WebSocketTransport(SessionManager& sm, uint16_t idleTimeoutSec = 45, uint32_t     maxPayloadBytes = 10 * 1024 * 1024);
+        WebSocketTransport(SessionManager& sm, uint16_t idleTimeoutSec = 45, uint32_t maxPayloadBytes = 10 * 1024 * 1024);
 
     /**
      * @brief Destructor.
@@ -183,7 +89,7 @@ namespace binaryrpc {
      * @brief Configures reliability and QoS options for message delivery.
      * @param options The reliability options to use.
      */
-        void setReliable(const ReliableOptions&) override;
+        void setReliable(const ReliableOptions& options) override;
 
     /**
      * @brief Sets the callback to be invoked when data is received from a client.

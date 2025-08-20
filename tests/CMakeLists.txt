@@ -19,6 +19,7 @@ target_link_libraries(binaryrpc_unit_tests
 target_include_directories(binaryrpc_unit_tests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src
 )
 
 add_test(NAME SessionManagerTests COMMAND binaryrpc_unit_tests)
@@ -39,6 +40,7 @@ target_link_libraries(binaryrpc_qos_tests
 target_include_directories(binaryrpc_qos_tests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src
 )
 
 target_compile_definitions(binaryrpc_qos_tests PUBLIC BINARYRPC_TEST)

@@ -11,38 +11,38 @@
 #pragma once
 
 #include "binaryrpc/core/interfaces/iplugin.hpp"
-#include "binaryrpc/core/session/session_manager.hpp"
-#include "binaryrpc/core/interfaces/itransport.hpp"
-#include <unordered_map>
-#include <unordered_set>
-#include <memory>
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace binaryrpc {
 
+    // Forward declarations
+    class SessionManager;
+    class ITransport;
+
     /**
      * @class RoomPlugin
-     * @brief Plugin for managing rooms (groups of sessions) in BinaryRPC.
+     * @brief A plugin for managing chat rooms or game lobbies.
      *
-     * Allows sessions to join/leave rooms, broadcast messages to all members,
-     * and query the list of members in a room. Thread-safe and integrated with the session manager.
+     * Provides functionality for joining, leaving, and broadcasting messages to rooms.
      */
     class RoomPlugin : public IPlugin {
     public:
         /**
-         * @brief Construct a RoomPlugin with a session manager and transport.
+         * @brief Construct a RoomPlugin.
          * @param sessionManager Reference to the SessionManager
-         * @param transport Pointer to the transport
+         * @param transport Pointer to the ITransport instance
          */
-        explicit RoomPlugin(SessionManager& sessionManager, ITransport* transport);
+        RoomPlugin(SessionManager& sessionManager, ITransport* transport);
+        
         /**
          * @brief Destructor for RoomPlugin.
          */
-        ~RoomPlugin() override = default;
+        ~RoomPlugin() override;
 
         /**
-         * @brief Initialize the plugin. Called when the plugin is loaded.
+         * @brief Initialize the plugin (called by App).
          */
         void initialize() override;
         /**
@@ -82,10 +82,9 @@ namespace binaryrpc {
         std::vector<std::string> getRoomMembers(const std::string& room) const;
 
     private:
-        SessionManager& sessionManager_; ///< Reference to the session manager
-        ITransport* transport_; ///< Pointer to the transport
-        std::unique_ptr<std::mutex> mtx_; ///< Mutex for thread safety
-        std::unordered_map<std::string, std::unordered_set<std::string>> rooms_; ///< Room membership map
+        // PIMPL idiom
+        struct Impl;
+        std::unique_ptr<Impl> pImpl_;
     };
 
 }

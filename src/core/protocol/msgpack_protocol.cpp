@@ -1,4 +1,6 @@
 ﻿#include "binaryrpc/core/protocol/msgpack_protocol.hpp"
+#include "binaryrpc/core/interfaces/iprotocol.hpp"
+#include "binaryrpc/core/util/error_types.hpp" // Corrected path
 
 
 namespace binaryrpc {

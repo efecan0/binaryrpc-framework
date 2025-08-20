@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <chrono>
 #include <algorithm>                        // std::min
-#include "binaryrpc/core/middleware/middleware_chain.hpp"
+#include "binaryrpc/core/types.hpp"
 #include "binaryrpc/core/session/session.hpp"
 
 namespace binaryrpc {

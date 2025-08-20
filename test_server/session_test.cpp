@@ -1,5 +1,9 @@
-﻿#include "binaryrpc/core/app.hpp"
-#include "../include/binaryrpc/transports/websocket/websocket_transport.hpp"
+﻿#include "binaryrpc/core/rpc/rpc_context.hpp"
+#include "binaryrpc/core/protocol/simple_text_protocol.hpp"
+#include "binaryrpc/core/util/logger.hpp"
+#include <iostream>
+#include "binaryrpc/core/app.hpp"
+#include "binaryrpc/transports/websocket/websocket_transport.hpp"
 #include "binaryrpc/core/util/qos.hpp"
 #include "binaryrpc/core/framework_api.hpp"
 #include <iostream>
@@ -23,7 +27,7 @@ int main() {
     app.setTransport(std::move(ws));
 
     // ---- Frameworkâ€‘level API ----
-    FrameworkAPI api(&app.getSessionManager(), app.getTransport());
+    auto& api = app.getFrameworkApi();
 
     /* nonâ€‘indexed set/get */
     app.registerRPC("set.nonidx", [&](const std::vector<uint8_t>& p, RpcContext& ctx){
@@ -52,8 +56,11 @@ int main() {
 
     app.registerRPC("find.city", [&](const std::vector<uint8_t>& p, RpcContext& ctx){
         std::string city(p.begin(), p.end());
-        auto v  = api.findBy("city", city);
-        std::string resp = std::to_string(v.size());
+        auto v_ptr  = api.findBy("city", city);
+        std::string resp = "0";
+        if (v_ptr.size() > 0) {
+            resp = std::to_string(v_ptr.size());
+        }
         ctx.reply(app.getProtocol()->serialize("find.city",
                                                                {resp.begin(), resp.end()}));
     });

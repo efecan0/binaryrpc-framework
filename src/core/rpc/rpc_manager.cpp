@@ -1,4 +1,6 @@
-﻿#include "binaryrpc/core/rpc/rpc_manager.hpp"
+﻿#include "internal/core/rpc/rpc_manager.hpp"
+#include "binaryrpc/core/rpc/rpc_context.hpp"
+#include "binaryrpc/core/util/logger.hpp" // Corrected path
 #include <iostream>
 
 namespace binaryrpc {

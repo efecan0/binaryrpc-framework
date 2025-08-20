@@ -1,6 +1,10 @@
 ﻿// test_server.cpp
+#include "binaryrpc/core/rpc/rpc_context.hpp"
+#include "binaryrpc/core/protocol/simple_text_protocol.hpp"
+#include "binaryrpc/core/util/logger.hpp"
+#include <iostream>
 #include "binaryrpc/core/app.hpp"
-#include "../include/binaryrpc/transports/websocket/websocket_transport.hpp"
+#include "binaryrpc/transports/websocket/websocket_transport.hpp"
 #include "binaryrpc/core/util/qos.hpp"
 #include "binaryrpc/core/strategies/linear_backoff.hpp"
 #include "binaryrpc/core/framework_api.hpp"
@@ -28,7 +32,7 @@ int main(){
     ws->setReliable(opts);
     app.setTransport(std::move(ws));
 
-    FrameworkAPI api(&app.getSessionManager(), app.getTransport());
+    auto& api = app.getFrameworkApi();
 
 
     app.registerRPC("echo", [](const std::vector<uint8_t>& req, RpcContext& ctx) {

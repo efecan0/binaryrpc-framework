@@ -1,5 +1,11 @@
 ﻿#include "binaryrpc/core/session/session_manager.hpp"
-#include "../util/conn_state.hpp"
+#include "internal/core/session/generic_index.hpp"
+#include "internal/core/util/conn_state.hpp"
+#include "binaryrpc/core/session/session.hpp"
+#include "binaryrpc/core/auth/ClientIdentity.hpp"
+#include "binaryrpc/core/util/logger.hpp"
+#include "internal/core/util/random.hpp"
+#include "internal/core/util/time.hpp"
 #include <iomanip>
 #include <sstream>
 
@@ -15,9 +21,71 @@ static std::string toHex(const std::array<uint8_t, 16>& arr) {
     return ss.str();
 }
 
+/**
+ * @brief Move constructor for SessionManager.
+ */
+SessionManager::SessionManager(SessionManager&& o) noexcept
+    : ttlMs_{ o.ttlMs_ },
+      index_{ o.index_ },
+      cleanupThread_{ std::move(o.cleanupThread_) },
+      sessions_{ std::move(o.sessions_) },
+      bySid_{ std::move(o.bySid_) },
+      byId_{ std::move(o.byId_) },
+      state_{ std::move(o.state_) }
+{
+    // Set the source index to null to prevent double-free, as ownership has been transferred.
+    o.index_ = nullptr;
+}
+
+/**
+ * @brief Move assignment operator for SessionManager.
+ */
+SessionManager& SessionManager::operator=(SessionManager&& o) noexcept
+{
+    if (this != &o) {
+        // Release existing resources before acquiring new ones.
+        if (cleanupThread_.joinable()) {
+            cleanupThread_.request_stop();
+            cleanupThread_.join();
+        }
+        delete index_;
+
+        // Transfer ownership of resources from the source object.
+        ttlMs_ = o.ttlMs_;
+        index_ = o.index_;
+        cleanupThread_ = std::move(o.cleanupThread_);
+        sessions_ = std::move(o.sessions_);
+        bySid_ = std::move(o.bySid_);
+        byId_ = std::move(o.byId_);
+        state_ = std::move(o.state_);
+
+        // Set the source index to null to prevent double-free.
+        o.index_ = nullptr;
+    }
+    return *this;
+}
+
 /*──────────────── Helper: new SID generator ───────────────*/
 static std::atomic<std::uint64_t> g_sid{ 1 };
 static inline std::string makeSid() { return "S" + std::to_string(g_sid++); }
+
+SessionManager::SessionManager(std::uint64_t ttlMs)
+    : ttlMs_{ ttlMs }, index_{ new GenericIndex() } {}
+
+SessionManager::~SessionManager() {
+    if (cleanupThread_.joinable()) {
+        cleanupThread_.request_stop();
+        cleanupThread_.join();
+    }
+    delete index_;
+}
+
+GenericIndex& SessionManager::indices() { return *index_; }
+
+std::shared_ptr<const std::unordered_set<std::string>>
+SessionManager::findIndexed(const std::string& key, const std::string& value) const {
+    return index_->find(key, value);
+}
 
 /*──────────────── Session creation ───────────────*/
 std::shared_ptr<Session> SessionManager::createSession(const ClientIdentity& cid, uint64_t nowMs)
@@ -49,7 +117,7 @@ bool SessionManager::setField(const std::string& sid,
     
     // 2. Index if required
     if (indexed) {
-        index_.add(sid, key, toStr(value));
+        index_->add(sid, key, toStr(value));
     }
     
     return true;
@@ -144,7 +212,7 @@ void SessionManager::reap(uint64_t now)
             // 3. Remove from all maps and index
             bySid_.erase(sess->id());
             sessions_.erase(sess->id());
-            index_.remove(sess->id());
+            index_->remove(sess->id());
 
             it = byId_.erase(it);
         }
@@ -172,7 +240,7 @@ void SessionManager::removeSession(const std::string& sid)
         bySid_.erase(sid);
         sessions_.erase(it);
     }
-    index_.remove(sid);
+    index_->remove(sid);
 }
 
 /*──────────────── Get / List operations ───────────────*/
@@ -200,7 +268,7 @@ void SessionManager::indexedSet(std::shared_ptr<Session> s,
                                 const T& value)
 {
     s->set(key, value);
-    index_.add(s->id(), key, toStr(value));
+    index_->add(s->id(), key, toStr(value));
 }
 
 /* explicit instantiation */

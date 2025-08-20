@@ -1,7 +1,11 @@
-﻿#include "binaryrpc/core/app.hpp"
+﻿#include "binaryrpc/core/rpc/rpc_context.hpp"
+#include "binaryrpc/core/protocol/simple_text_protocol.hpp"
+#include "binaryrpc/core/util/logger.hpp"
+#include <iostream>
+#include "binaryrpc/core/app.hpp"
 #include "binaryrpc/core/framework_api.hpp"
 #include "binaryrpc/core/protocol/simple_text_protocol.hpp"
-#include "../include/binaryrpc/transports/websocket/websocket_transport.hpp"
+#include "binaryrpc/transports/websocket/websocket_transport.hpp"
 
 using namespace binaryrpc;
 
@@ -19,7 +23,7 @@ int main() {
 
     app.setTransport(std::move(ws));
 
-    FrameworkAPI api(&sm, app.getTransport());
+    auto& api = app.getFrameworkApi();
 
     // === Middleware: log session ID ve requestCount ===
     app.use([](Session& s, const std::string& method, std::vector<uint8_t>& payload, NextFunc next) {

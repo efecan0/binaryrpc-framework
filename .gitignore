@@ -26,6 +26,7 @@ Testing/
 # IDE files
 .idea/
 .vscode/
+.vs/
 *.sln
 *.vcxproj
 *.vcxproj.*
@@ -84,3 +85,6 @@ tests/Memory_leak_stress_test_py/
 # VCPKG
 vcpkg_installed
 vcpkg-configuration.json
+
+# Third-party libraries (submodules)
+# third_party/  # Commented out to allow submodules

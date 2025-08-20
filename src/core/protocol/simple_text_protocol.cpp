@@ -1,4 +1,7 @@
 ﻿#include "binaryrpc/core/protocol/simple_text_protocol.hpp"
+#include "binaryrpc/core/interfaces/iprotocol.hpp"
+#include "binaryrpc/core/util/logger.hpp"
+#include "binaryrpc/core/util/error_types.hpp"
 #include <string>
 
 namespace binaryrpc {

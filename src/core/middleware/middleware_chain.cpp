@@ -1,5 +1,5 @@
 ﻿#include "binaryrpc/core/middleware/middleware_chain.hpp"
-#include "binaryrpc/core/util/logger.hpp"  // logger include
+#include "binaryrpc/core/util/logger.hpp"
 
 namespace binaryrpc {
 

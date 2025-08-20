@@ -1,102 +1,81 @@
 ﻿#include "binaryrpc/plugins/room_plugin.hpp"
+#include "binaryrpc/core/session/session_manager.hpp"
+#include "binaryrpc/core/interfaces/itransport.hpp"
+#include "binaryrpc/core/util/logger.hpp"
+#include <mutex>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace binaryrpc {
 
-    RoomPlugin::RoomPlugin(SessionManager& sessionManager, ITransport* transport)
-        : sessionManager_(sessionManager), transport_(transport) {
-        // Mutex'i initialize
-        mtx_ = std::make_unique<std::mutex>();
-    }
+    struct RoomPlugin::Impl {
+        SessionManager& sessionManager_;
+        ITransport* transport_;
+        std::mutex mtx_;
+        std::unordered_map<std::string, std::unordered_set<std::string>> rooms_;
 
-    void RoomPlugin::initialize() {
-        // mutex is initialized in the constructor
-    }
+        Impl(SessionManager& sm, ITransport* t) : sessionManager_(sm), transport_(t) {}
+    };
+
+    RoomPlugin::RoomPlugin(SessionManager& sessionManager, ITransport* transport)
+        : pImpl_(std::make_unique<Impl>(sessionManager, transport)) {}
+
+    RoomPlugin::~RoomPlugin() = default;
+
+    void RoomPlugin::initialize() {}
 
     void RoomPlugin::join(const std::string& room, const std::string& sid) {
-        if (!mtx_) return;
-        std::scoped_lock lk(*mtx_);
-        rooms_[room].insert(sid);
+        std::scoped_lock lk(pImpl_->mtx_);
+        pImpl_->rooms_[room].insert(sid);
     }
 
     void RoomPlugin::leave(const std::string& room, const std::string& sid) {
-        if (!mtx_) return;
-        std::scoped_lock lk(*mtx_);
-        auto it = rooms_.find(room);
-        if (it == rooms_.end()) return;
-        it->second.erase(sid);
-        if (it->second.empty()) rooms_.erase(it);
+        std::scoped_lock lk(pImpl_->mtx_);
+        auto it = pImpl_->rooms_.find(room);
+        if (it != pImpl_->rooms_.end()) {
+            it->second.erase(sid);
+            if (it->second.empty()) {
+                pImpl_->rooms_.erase(it);
+            }
+        }
     }
 
     void RoomPlugin::leaveAll(const std::string& sid) {
-        if (!mtx_) return;
-        
-        try {
-            std::scoped_lock lk(*mtx_);
-            for (auto it = rooms_.begin(); it != rooms_.end(); ) {
-                it->second.erase(sid);
-                if (it->second.empty())
-                    it = rooms_.erase(it);
-                else
-                    ++it;
+        std::scoped_lock lk(pImpl_->mtx_);
+        for (auto it = pImpl_->rooms_.begin(); it != pImpl_->rooms_.end(); ) {
+            it->second.erase(sid);
+            if (it->second.empty()) {
+                it = pImpl_->rooms_.erase(it);
+            } else {
+                ++it;
             }
-        }
-        catch (const std::exception& e) {
-            LOG_ERROR("leaveAll: " + std::string(e.what()));
-        }
-        catch (...) {
-            LOG_ERROR("leaveAll: Unknown error");
         }
     }
 
-    void RoomPlugin::broadcast(const std::string& room,
-        const std::vector<uint8_t>& data)
-    {
-        if (!mtx_) return;
-
+    void RoomPlugin::broadcast(const std::string& room, const std::vector<uint8_t>& data) {
         std::vector<std::string> members;
-
-        {   /* --- copy-out under lock --- */
-            std::scoped_lock lk(*mtx_);
-            auto it = rooms_.find(room);
-            if (it == rooms_.end()) return;
+        {
+            std::scoped_lock lk(pImpl_->mtx_);
+            auto it = pImpl_->rooms_.find(room);
+            if (it == pImpl_->rooms_.end()) return;
             members.assign(it->second.begin(), it->second.end());
         }
 
-        std::vector<std::string> expired;
-
         for (const auto& sid : members) {
-            if (auto session = sessionManager_.getSession(sid);
-                session && session->getConnection())
-            {
-                transport_->sendToClient(session->getConnection(), data);
-            }
-            else {
-                expired.push_back(sid);
-            }
-        }
-
-        /* clean up disconnected members */
-        if (!expired.empty() && mtx_) {
-            std::scoped_lock lk(*mtx_);
-            auto it = rooms_.find(room);
-            if (it != rooms_.end()) {
-                for (auto& e : expired) it->second.erase(e);
-                if (it->second.empty()) rooms_.erase(it);
+            if (auto session = pImpl_->sessionManager_.getSession(sid)) {
+                if(auto* ws = session->liveWs()) {
+                    pImpl_->transport_->sendToClient(ws, data);
+                }
             }
         }
     }
 
     std::vector<std::string> RoomPlugin::getRoomMembers(const std::string& room) const {
-        if (!mtx_) return {};
-        
-        std::scoped_lock lk(*mtx_);
-        auto it = rooms_.find(room);
-        if (it == rooms_.end()) {
-            return {};  // return an empty list if the room does not exist
+        std::scoped_lock lk(pImpl_->mtx_);
+        auto it = pImpl_->rooms_.find(room);
+        if (it == pImpl_->rooms_.end()) {
+            return {};
         }
-        
-        // return the list of users in the room
-        return std::vector<std::string>(it->second.begin(), it->second.end());
+        return {it->second.begin(), it->second.end()};
     }
-
 }

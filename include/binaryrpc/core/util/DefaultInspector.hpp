@@ -14,7 +14,10 @@
 #include "binaryrpc/core/auth/ClientIdentity.hpp"
 #include <optional>
 #include <string>
-#include <string_view>
+#include <memory>
+
+// Forward declaration to avoid including the uWebSockets header
+namespace uWS { struct HttpRequest; }
 
 namespace binaryrpc {
 
@@ -31,65 +34,31 @@ namespace binaryrpc {
      */
     class DefaultInspector : public IHandshakeInspector {
     public:
+        DefaultInspector();
+        ~DefaultInspector() override;
+
+        DefaultInspector(const DefaultInspector&) = delete;
+        DefaultInspector& operator=(const DefaultInspector&) = delete;
+        DefaultInspector(DefaultInspector&&) noexcept;
+        DefaultInspector& operator=(DefaultInspector&&) noexcept;
+
         /**
          * @brief Extract client identity from the HTTP upgrade request and remote IP.
          * @param req Reference to the uWS::HttpRequest
          * @return Optional ClientIdentity if extraction is successful, std::nullopt otherwise
          */
-        std::optional<ClientIdentity> extract(uWS::HttpRequest& req) override {
-            using std::string;
-            string cid{ req.getHeader("x-client-id") };
-            if (cid.empty()) {
-                LOG_ERROR("Missing x-client-id header");
-                return std::nullopt;
-            }
-
-            /* deviceId --> uint64 */
-            std::uint64_t did = 0;
-            string didTxt{ req.getHeader("x-device-id") };
-            if (!didTxt.empty()) {
-                // Accept formats like "777" or "dev-777" – parse numeric suffix
-                const auto firstDigit = didTxt.find_first_of("0123456789");
-                if (firstDigit != std::string::npos) {
-                    try {
-                        did = std::stoull(didTxt.substr(firstDigit));
-                    }
-                    catch (const std::exception& ex) {
-                        LOG_ERROR("Invalid device id '" + didTxt + "' – " + ex.what());
-                        return std::nullopt;
-                    }
-                }
-                else {
-                    LOG_ERROR("Device id '" + didTxt + "' contains no numeric part");
-                    return std::nullopt;
-                }
-            }
-
-            /* optional 128-bit token (hex) */
-            std::array<std::uint8_t, 16> tok{};
-            string tokTxt{ req.getHeader("x-session-token") };
-            if (!tokTxt.empty() && tokTxt.size() == 32) {
-                try {
-                    for (size_t i = 0; i < 16; ++i)
-                        tok[i] = static_cast<std::uint8_t>(
-                            std::stoi(tokTxt.substr(i * 2, 2), nullptr, 16));
-                }
-                catch (const std::exception& ex) {
-                    LOG_ERROR("Invalid session token format: " + std::string(ex.what()));
-                    return std::nullopt;
-                }
-            }
-
-            return ClientIdentity{ cid, did, tok };
-        }
+        std::optional<ClientIdentity> extract(uWS::HttpRequest& req) override;
 
         /**
          * @brief Reason for handshake rejection (not used in default implementation).
          * @return String describing the rejection reason
          */
-        std::string rejectReason() const override {
-            return "Invalid handshake data";
-        }
+        std::string rejectReason() const override;
+
+    private:
+        // PIMPL idiom to hide implementation details
+        struct Impl;
+        std::unique_ptr<Impl> pImpl_;
     };
 
 }
