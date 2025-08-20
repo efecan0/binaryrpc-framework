@@ -13,7 +13,6 @@
 #include "binaryrpc/core/util/logger.hpp"
 #include "binaryrpc/core/util/error_types.hpp"
 
-#include "binaryrpc/core/util/thread_pool.hpp"
 #include <iostream>
 #include <thread>
 
@@ -27,20 +26,11 @@ namespace binaryrpc {
         std::unique_ptr<ITransport> transport_;
         std::vector<std::shared_ptr<IPlugin>> plugins_;
         std::shared_ptr<IProtocol> protocol_;
-        std::unique_ptr<ThreadPool> thread_pool_;
         std::unique_ptr<FrameworkAPI> frameworkApi_;
 
-        Impl() {
-            auto thread_count = std::thread::hardware_concurrency();
-            if (thread_count == 0) {
-                thread_count = 2;
-            }
-            thread_pool_ = std::make_unique<ThreadPool>(thread_count);
-        }
+        Impl() {}
 
-        ~Impl() {
-            // ThreadPool destructor automatically calls join()
-        }
+        ~Impl() {}
 
         void onDataReceived(const std::shared_ptr<IProtocol>& proto,
                             const std::vector<uint8_t>& data,
@@ -54,33 +44,31 @@ namespace binaryrpc {
                                   void* connection)
     {
         auto data_copy = data;
-        thread_pool_->add([this, proto, data_copy, session, connection]() {
-            if (!proto) {
-                LOG_ERROR("[App] protocol_ null (race condition)!");
-                return;
-            }
-            auto req = proto->parse(data_copy);
-            if (req.methodName.empty()) {
-                ErrorObj err{ RpcErr::Parse,"Failed to parse incoming data" };
-                transport_->sendToClient(connection, proto->serializeError(err));
-                return;
-            }
-            bool okChain = middlewareChain_.execute(*session, req.methodName, req.payload);
-            if (!okChain) {
-                ErrorObj err{ RpcErr::Middleware,"Access denied by middleware" };
-                transport_->sendToClient(connection, proto->serializeError(err));
-                return;
-            }
-            std::vector<uint8_t> dummy;
-            bool found = rpcManager_.call(req.methodName, req.payload, dummy, *session);
-            if (!found) {
-                ErrorObj err{ RpcErr::NotFound,"RPC method not found: " + req.methodName };
-                transport_->sendToClient(connection, proto->serializeError(err));
-                return;
-            }
-            if (!dummy.empty())
-                transport_->sendToClient(connection, dummy);
-        });
+        if (!proto) {
+            LOG_ERROR("[App] protocol_ null (race condition)!");
+            return;
+        }
+        auto req = proto->parse(data_copy);
+        if (req.methodName.empty()) {
+            ErrorObj err{ RpcErr::Parse,"Failed to parse incoming data" };
+            transport_->sendToClient(connection, proto->serializeError(err));
+            return;
+        }
+        bool okChain = middlewareChain_.execute(*session, req.methodName, req.payload);
+        if (!okChain) {
+            ErrorObj err{ RpcErr::Middleware,"Access denied by middleware" };
+            transport_->sendToClient(connection, proto->serializeError(err));
+            return;
+        }
+        std::vector<uint8_t> dummy;
+        bool found = rpcManager_.call(req.methodName, req.payload, dummy, *session);
+        if (!found) {
+            ErrorObj err{ RpcErr::NotFound,"RPC method not found: " + req.methodName };
+            transport_->sendToClient(connection, proto->serializeError(err));
+            return;
+        }
+        if (!dummy.empty())
+            transport_->sendToClient(connection, dummy);
     }
 
     // App methods delegating to the implementation
