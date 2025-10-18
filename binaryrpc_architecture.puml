@@ -1,0 +1,372 @@
+@startuml BinaryRPC Architecture
+
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam classBackgroundColor #F8F9FA
+skinparam classBorderColor #343A40
+skinparam packageBackgroundColor #E9ECEF
+skinparam packageBorderColor #6C757D
+skinparam noteBackgroundColor #FFF3CD
+skinparam noteBorderColor #FFC107
+
+title BinaryRPC - Detaylı UML Mimarisi
+
+package "Client Layer" {
+    class Client {
+        +clientId: string
+        +deviceId: uint64
+        +sessionToken: array<uint8_t, 16>
+        +connection: WebSocket*
+        +state: ConnectionState
+    }
+    
+    class WebSocketConnection {
+        +connection: void*
+        +isConnected: bool
+        +lastActivity: timestamp
+    }
+}
+
+package "Transport Layer" {
+    interface ITransport {
+        +start(port: uint16_t): void
+        +stop(): void
+        +send(data: vector<uint8_t>): void
+        +sendToClient(connection: void*, data: vector<uint8_t>): void
+        +sendToSession(session: Session, data: vector<uint8_t>): void
+        +disconnectClient(connection: void*): void
+        +setCallback(callback: DataCallback): void
+        +setSessionRegisterCallback(cb: SessionRegisterCallback): void
+        +setDisconnectCallback(cb: DisconnectCallback): void
+        +setReliable(options: ReliableOptions): void
+    }
+    
+    class WebSocketTransport {
+        -sessionManager: SessionManager&
+        -idleTimeoutSec: uint16_t
+        -maxPayloadBytes: uint32_t
+        -handshakeInspector: shared_ptr<IHandshakeInspector>
+        -reliableOptions: ReliableOptions
+        +start(port: uint16_t): void
+        +stop(): void
+        +send(data: vector<uint8_t>): void
+        +sendToClient(connection: void*, data: vector<uint8_t>): void
+        +sendToSession(session: Session, data: vector<uint8_t>): void
+        +disconnectClient(connection: void*): void
+        +setHandshakeInspector(inspector: shared_ptr<IHandshakeInspector>): void
+        +handleFrame(data: uint8_t*, length: size_t): void
+    }
+    
+    enum FrameType {
+        FRAME_DATA
+        FRAME_ACK
+        FRAME_PREPARE
+        FRAME_PREPARE_ACK
+        FRAME_COMMIT
+        FRAME_COMPLETE
+    }
+}
+
+package "Protocol Layer" {
+    interface IProtocol {
+        +parse(data: vector<uint8_t>): ParsedRequest
+        +serialize(method: string, payload: vector<uint8_t>): vector<uint8_t>
+        +serializeError(error: ErrorObj): vector<uint8_t>
+    }
+    
+    class MsgPackProtocol {
+        +parse(data: vector<uint8_t>): ParsedRequest
+        +serialize(method: string, payload: vector<uint8_t>): vector<uint8_t>
+        +serializeError(error: ErrorObj): vector<uint8_t>
+    }
+    
+    class SimpleTextProtocol {
+        +parse(data: vector<uint8_t>): ParsedRequest
+        +serialize(method: string, payload: vector<uint8_t>): vector<uint8_t>
+        +serializeError(error: ErrorObj): vector<uint8_t>
+    }
+    
+    struct ParsedRequest {
+        +methodName: string
+        +payload: vector<uint8_t>
+    }
+}
+
+package "Core Application" {
+    class App {
+        -pImpl: unique_ptr<Impl>
+        +getInstance(): App&
+        +run(port: uint16_t): void
+        +stop(): void
+        +setTransport(transport: unique_ptr<ITransport>): void
+        +usePlugin(plugin: shared_ptr<IPlugin>): void
+        +use(middleware: Middleware): void
+        +useFor(method: string, middleware: Middleware): void
+        +useForMulti(methods: vector<string>, middleware: Middleware): void
+        +registerRPC(method: string, handler: RpcContextHandler): void
+        +getTransport(): ITransport*
+        +getSessionManager(): SessionManager&
+        +getFrameworkApi(): FrameworkAPI&
+        +setProtocol(proto: shared_ptr<IProtocol>): void
+        +getProtocol(): IProtocol*
+    }
+    
+    class FrameworkAPI {
+        -pImpl: unique_ptr<Impl>
+        +sendTo(sid: string, data: vector<uint8_t>): bool
+        +sendToSession(session: shared_ptr<Session>, data: vector<uint8_t>): void
+        +disconnect(sid: string): bool
+        +listSessionIds(): vector<string>
+        +setField<T>(sid: string, key: string, value: T, indexed: bool): bool
+        +getField<T>(sid: string, key: string): optional<T>
+        +findBy(key: string, value: string): vector<shared_ptr<Session>>
+    }
+}
+
+package "Session Management" {
+    class SessionManager {
+        -sessions: unordered_map<string, shared_ptr<Session>>
+        -byId: unordered_map<ClientIdentity, shared_ptr<Session>>
+        -bySid: unordered_map<string, shared_ptr<Session>>
+        -state: unordered_map<string, unordered_map<string, any>>
+        -index: GenericIndex*
+        -ttlMs: uint64_t
+        -cleanupThread: jthread
+        -offlineQueues: unordered_map<string, queue<OfflineMessage>>
+        +createSession(cid: ClientIdentity, nowMs: uint64_t): shared_ptr<Session>
+        +getOrCreate(id: ClientIdentity, nowMs: uint64_t): shared_ptr<Session>
+        +removeSession(sid: string): void
+        +getSession(sid: string): shared_ptr<Session>
+        +listSessionIds(): vector<string>
+        +attachSession(s: shared_ptr<Session>): void
+        +indices(): GenericIndex&
+        +findIndexed(key: string, value: string): shared_ptr<const unordered_set<string>>
+        +reap(nowMs: uint64_t): void
+        +startCleanupTimer(): void
+        +setField<T>(sid: string, key: string, value: T, indexed: bool): bool
+        +getField<T>(sid: string, key: string): optional<T>
+        +addOfflineMessage(sessionId: string, data: vector<uint8_t>): bool
+        +processOfflineMessages(sessionId: string, sendCallback: function): void
+    }
+    
+    class Session {
+        -pImpl: unique_ptr<Impl>
+        +qosState: shared_ptr<ConnState>
+        +expiryMs: uint64_t
+        +connectionState: ConnectionState
+        +id(): string&
+        +identity(): ClientIdentity&
+        +rebind(ws: WS*): void
+        +liveWs(): WS*
+        +set<T>(key: string, value: T): void
+        +get<T>(key: string): T
+        +acceptDuplicate(payload: vector<uint8_t>, ttl: milliseconds): bool
+    }
+    
+    struct ClientIdentity {
+        +clientId: string
+        +deviceId: uint64_t
+        +sessionToken: array<uint8_t, 16>
+        +operator==(other: ClientIdentity): bool
+    }
+    
+    enum ConnectionState {
+        ONLINE
+        OFFLINE
+    }
+    
+    struct OfflineMessage {
+        +data: vector<uint8_t>
+        +timestamp: uint64_t
+        +sessionId: string
+    }
+}
+
+package "RPC System" {
+    class RpcContext {
+        -session: shared_ptr<Session>
+        -connection: void*
+        -transport: ITransport*
+        +reply(data: vector<uint8_t>): void
+        +broadcast(data: vector<uint8_t>): void
+        +disconnect(): void
+        +session(): Session&
+        +sessionPtr(): shared_ptr<Session>
+        +hasRole(expected: string): bool
+    }
+    
+    class RpcManager {
+        -handlers: unordered_map<string, RpcContextHandler>
+        +registerHandler(method: string, handler: RpcContextHandler): void
+        +execute(method: string, payload: vector<uint8_t>, context: RpcContext): void
+    }
+    
+    note right of RpcContext
+        RPC çağrıları için context sağlar.
+        Session, transport ve connection'a erişim.
+        Reply, broadcast ve disconnect işlemleri.
+    end note
+}
+
+package "Middleware System" {
+    class MiddlewareChain {
+        -global: vector<Middleware>
+        -scoped: unordered_map<string, vector<Middleware>>
+        +add(middleware: Middleware): void
+        +addFor(method: string, middleware: Middleware): void
+        +execute(session: Session&, method: string, payload: vector<uint8_t>&): bool
+    }
+    
+    class JwtAuth {
+        +jwtAuth(secret: string, requiredRole: string): Middleware
+    }
+    
+    class RateLimiter {
+        +rateLimiter(qps: int, burst: int): Middleware
+    }
+    
+    struct RateBucket {
+        +tokens: int
+        +last: time_point
+    }
+    
+    note right of MiddlewareChain
+        Chain of Responsibility pattern.
+        Global ve method-specific middleware.
+        Her middleware next() çağırabilir.
+    end note
+}
+
+package "Plugin System" {
+    interface IPlugin {
+        +initialize(): void
+        +name(): const char*
+    }
+    
+    class RoomPlugin {
+        -pImpl: unique_ptr<Impl>
+        +initialize(): void
+        +name(): const char*
+        +join(room: string, sid: string): void
+        +leave(room: string, sid: string): void
+        +leaveAll(sid: string): void
+        +broadcast(room: string, data: vector<uint8_t>): void
+        +getRoomMembers(room: string): vector<string>
+    }
+}
+
+package "Quality of Service" {
+    enum QoSLevel {
+        None
+        AtLeastOnce
+        ExactlyOnce
+    }
+    
+    struct ReliableOptions {
+        +level: QoSLevel
+        +baseRetryMs: uint32_t
+        +maxRetry: uint32_t
+        +maxBackoffMs: uint32_t
+        +sessionTtlMs: uint64_t
+        +duplicateTtlMs: uint32_t
+        +backoffStrategy: shared_ptr<IBackoffStrategy>
+        +enableCompression: bool
+        +compressionThresholdBytes: size_t
+        +maxSendQueueSize: size_t
+    }
+    
+    interface IBackoffStrategy {
+        +calculateDelay(attempt: int, baseDelay: uint32_t): uint32_t
+    }
+    
+    struct ConnState {
+        +qosLevel: QoSLevel
+        +retryCount: uint32_t
+        +lastRetry: time_point
+        +duplicateFilter: unordered_set<uint64_t>
+        +sendQueue: queue<Message>
+    }
+}
+
+package "Utilities" {
+    class Logger {
+        +info(message: string): void
+        +warn(message: string): void
+        +error(message: string): void
+        +debug(message: string): void
+    }
+    
+    class GenericIndex {
+        +add(key: string, value: string, sessionId: string): void
+        +remove(key: string, value: string, sessionId: string): void
+        +find(key: string, value: string): unordered_set<string>
+        +clear(): void
+    }
+    
+    class ThreadPool {
+        +submit(task: function<void()>): void
+        +shutdown(): void
+    }
+}
+
+' Relationships
+App ||--|| SessionManager : manages
+App ||--|| FrameworkAPI : provides
+App ||--o ITransport : uses
+App ||--o IProtocol : uses
+App ||--o IPlugin : loads
+App ||--o MiddlewareChain : configures
+
+SessionManager ||--o{ Session : manages
+SessionManager ||--|| GenericIndex : uses
+SessionManager ||--o{ OfflineMessage : queues
+
+WebSocketTransport ..|> ITransport : implements
+MsgPackProtocol ..|> IProtocol : implements
+SimpleTextProtocol ..|> IProtocol : implements
+RoomPlugin ..|> IPlugin : implements
+
+Session ||--|| ClientIdentity : identifies
+Session ||--o{ ConnState : has
+Session ||--o WebSocketConnection : connects
+
+RpcContext ||--|| Session : uses
+RpcContext ||--|| ITransport : uses
+
+MiddlewareChain ||--o{ Middleware : executes
+JwtAuth ..> Middleware : creates
+RateLimiter ..> Middleware : creates
+
+WebSocketTransport ||--o{ FrameType : handles
+WebSocketTransport ||--|| ReliableOptions : configures
+
+SessionManager ||--|| ThreadPool : uses
+SessionManager ||--|| Logger : uses
+
+note top of App
+    Singleton pattern ile tek instance.
+    Tüm framework'ün ana giriş noktası.
+    Transport, protocol, plugin ve middleware yönetimi.
+end note
+
+note top of SessionManager
+    Thread-safe session yönetimi.
+    Offline message queuing.
+    TTL-based cleanup.
+    Generic index ile hızlı arama.
+end note
+
+note top of WebSocketTransport
+    uWebSockets tabanlı transport.
+    QoS desteği ile güvenilir mesajlaşma.
+    Handshake inspection.
+    Frame-based protokol.
+end note
+
+note top of MiddlewareChain
+    Chain of Responsibility pattern.
+    Global ve method-specific middleware.
+    Her middleware next() çağırabilir.
+end note
+
+@enduml
