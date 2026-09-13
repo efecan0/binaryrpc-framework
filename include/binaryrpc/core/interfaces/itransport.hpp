@@ -26,7 +26,7 @@ namespace binaryrpc {
      * @typedef SessionRegisterCallback
      * @brief Callback type for registering a new session.
      */
-    using SessionRegisterCallback = std::function<void(const std::string&, std::shared_ptr<Session>)>;
+    using SessionRegisterCallback = std::function<void(std::shared_ptr<Session>)>;
     /**
      * @typedef DisconnectCallback
      * @brief Callback type for handling client disconnections.
