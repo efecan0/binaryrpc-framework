@@ -896,7 +896,7 @@ namespace binaryrpc {
                     pImpl_->handleSessionState(session, true);
 
                     if (pImpl_->regCb)
-                        pImpl_->regCb(session->id(), session);
+                        pImpl_->regCb(session);
                 };
 
 
@@ -1211,7 +1211,7 @@ namespace binaryrpc {
             ClientIdentity{"test", 0, {}},  // Simple identity for test
             clockMs()                   // Current time
         );
-        if (pImpl_->regCb) pImpl_->regCb(session->id(), session);
+        if (pImpl_->regCb) pImpl_->regCb(session);
 
         std::vector<uint8_t> raw(frame.begin() + hdr, frame.end());   // "echo:42"
         if (pImpl_->dataCb) pImpl_->dataCb(raw, session, nullptr);

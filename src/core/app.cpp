@@ -112,7 +112,7 @@ namespace binaryrpc {
             LOG_INFO("[App] Default protocol = SimpleText");
         }
         pImpl_->transport_->setSessionRegisterCallback(
-            [this]([[maybe_unused]] const std::string& _id, std::shared_ptr<Session> session) {
+            [this](std::shared_ptr<Session> session) {
                 pImpl_->sessionManager_.attachSession(std::move(session));
             });
         std::shared_ptr<IProtocol> protoHold = pImpl_->protocol_;
